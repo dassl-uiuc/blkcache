@@ -1,0 +1,15 @@
+{
+    "policy_type": "lru",
+    "db_type": "block_db",
+    "db": {
+        "block_db": {
+            "filename": "database",
+            "cache_size": 1024
+        }
+    },
+    "cache": {
+        "lru": {
+            "cache_size": 1024
+        }
+    }
+}
