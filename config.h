@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 struct BlockDBConfig {
   std::string filename;
-  int cache_size;
+  int num_entries;
 };
 
 struct DBConfig {
@@ -33,7 +33,7 @@ struct BlockCacheConfig {
 
 void from_json(const json &j, BlockDBConfig &block_db) {
   j.at("filename").get_to(block_db.filename);
-  j.at("cache_size").get_to(block_db.cache_size);
+  j.at("num_entries").get_to(block_db.num_entries);
 }
 
 void from_json(const json &j, DBConfig &db) {

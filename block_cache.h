@@ -56,10 +56,8 @@ public:
 
     } else {
       cache->put(k, v);
-      if (auto result_or_err = db->put(k, v)) {
-        panic("Error writing: {}",
-              magic_enum::enum_name(result_or_err.error()));
-      } else {
+      if (auto err = db->put(k, v); err != DBError::None) {
+        panic("Error writing: {}", magic_enum::enum_name(err));
       }
     }
   }
@@ -70,8 +68,9 @@ public:
     } else {
       cache_miss++;
       if (auto result_or_err = db->get(k)) {
-      } else {
         return result_or_err.value();
+      } else {
+        // panic("value for key {} does not exist");
       }
       return V{};
     }

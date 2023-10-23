@@ -3,13 +3,13 @@
     "db_type": "block_db",
     "db": {
         "block_db": {
-            "filename": "database",
-            "cache_size": 1024
+            "filename": "database.db",
+            "num_entries": 1024
         }
     },
     "cache": {
         "lru": {
-            "cache_size": 1024
+            "cache_size": 1
         }
     }
 }

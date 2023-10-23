@@ -5,7 +5,15 @@
 
 #include "expected.hpp"
 
-enum class DBError { Uninitialized, WriteKeyExists, KeyDoesNotExist };
+enum class DBError {
+  None,
+  Uninitialized,
+  Unimplemented,
+  WriteKeyExists,
+  KeyDoesNotExist,
+  WriteOutOfBounds,
+  KeyIsNotExpected
+};
 
 class DB {
 public:
@@ -16,10 +24,9 @@ public:
   virtual void close() {}
   virtual void shutdown() {}
 
-  virtual tl::expected<void, DBError> put(const std::string &key,
-                                          const std::string &value) = 0;
+  virtual DBError put(const std::string &key, const std::string &value) = 0;
   virtual tl::expected<std::string, DBError> get(const std::string &key) = 0;
-  virtual tl::expected<void, DBError> remove(const std::string &key) = 0;
+  virtual DBError remove(const std::string &key) = 0;
   virtual std::size_t size() const = 0;
 
 protected:

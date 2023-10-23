@@ -16,8 +16,11 @@ int main(int argc, char **argv) {
       BlockCache<std::string, std::string>::InitializeFromConfigFile(
           "../config.json");
 
-  block_cache.put("A", "B");
+  block_cache.put("A", "A");
+  block_cache.put("B", "B");
+  block_cache.put("C", "C");
   info("Got {}", block_cache.get("A"));
+
   // int fd = open("foo", O_RDWR | O_DIRECT);
   // assert(fd);
   // int cache_perc = atoi(argv[1]);

@@ -13,6 +13,12 @@ void info(fmt::format_string<Args...> fmt, Args &&...args) {
 }
 
 template <typename... Args>
+void debug(fmt::format_string<Args...> fmt, Args &&...args) {
+  const auto message = fmt::format(fmt, std::forward<Args>(args)...);
+  spdlog::debug(message);
+}
+
+template <typename... Args>
 void panic(fmt::format_string<Args...> fmt, Args &&...args) {
   const auto message = fmt::format(fmt, std::forward<Args>(args)...);
   spdlog::error(message);
