@@ -5,8 +5,6 @@
 #include <memory>
 #include <string>
 
-#include "expected.hpp"
-
 #include "config.h"
 
 #include "cache_policy/cache_policy.h"
@@ -23,6 +21,8 @@ template <typename K, typename V> class BlockCache {
   using DefaultCachePolicy = CachePolicy<K, V>;
 
 public:
+  explicit BlockCache() = default;
+
   explicit BlockCache(BlockCacheConfig block_cache_config_)
       : block_cache_config(std::move(block_cache_config_)) {
     if (block_cache_config.db_type == "block_db") {
