@@ -76,6 +76,14 @@ public:
     }
   }
 
+  void dump_cache(fs::path p) {
+    std::ofstream ofs(p);
+    if (!ofs) {
+      panic("Unable to open file {}", p.string());
+    }
+    cache->dump(ofs);
+  }
+
 private:
   BlockCacheConfig block_cache_config;
   std::unique_ptr<DB> db = nullptr;

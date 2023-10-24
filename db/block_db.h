@@ -83,7 +83,7 @@ public:
 
     // pwrite(fd, buf, BLOCK_SIZE, offset);
     lseek(fd, offset, SEEK_SET);
-    write(fd, buf, BLOCK_SIZE);
+    assert(write(fd, buf, BLOCK_SIZE) != -1);
     fsync(fd);
 
     return DBError::None;

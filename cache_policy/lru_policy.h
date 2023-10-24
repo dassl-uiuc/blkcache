@@ -33,6 +33,12 @@ public:
 
   void remove(const KeyType &key) override { panic("Unsupported"); }
 
+  void dump(std::ofstream &os) override {
+    for (const auto &[k, v] : item_map) {
+      os << k << "\n";
+    }
+  }
+
 private:
   void clean(void) {
     while (item_map.size() > this->cache_size) {
