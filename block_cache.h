@@ -77,7 +77,7 @@ public:
   }
 
   void dump_cache(fs::path p) {
-    std::ofstream ofs(p);
+    std::ofstream ofs(p, std::ios::out | std::ios::trunc);
     if (!ofs) {
       panic("Unable to open file {}", p.string());
     }
