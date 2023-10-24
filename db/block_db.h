@@ -38,9 +38,7 @@ public:
     }
 
     lseek(fd, 0, SEEK_SET);
-    for (auto i = 0; i < num_entries; i++) {
-      assert(write(fd, buf, cache_size) != -1);
-    }
+    assert(write(fd, buf, cache_size) != -1);
     fsync(fd);
     free(buf);
   }
@@ -83,7 +81,9 @@ public:
 
     // pwrite(fd, buf, BLOCK_SIZE, offset);
     lseek(fd, offset, SEEK_SET);
-    assert(write(fd, buf, BLOCK_SIZE) != -1);
+    if (write(fd, buf, BLOCK_SIZE) == -1) {
+      return DBError::WriteFailed;
+    }
     fsync(fd);
 
     return DBError::None;

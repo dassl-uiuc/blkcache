@@ -21,7 +21,7 @@ template <typename K, typename V> class BlockCache {
   using DefaultCachePolicy = CachePolicy<K, V>;
 
 public:
-  explicit BlockCache() = default;
+  // explicit BlockCache() = default;
 
   explicit BlockCache(BlockCacheConfig block_cache_config_)
       : block_cache_config(std::move(block_cache_config_)) {

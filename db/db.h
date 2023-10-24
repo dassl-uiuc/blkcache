@@ -12,7 +12,8 @@ enum class DBError {
   WriteKeyExists,
   KeyDoesNotExist,
   WriteOutOfBounds,
-  KeyIsNotExpected
+  KeyIsNotExpected,
+  WriteFailed,
 };
 
 class DB {
