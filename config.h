@@ -20,11 +20,17 @@ struct LRUConfig {
   int cache_size;
 };
 
+struct RandomCacheConfig {
+  int cache_size;
+};
+
 struct CacheConfig {
   LRUConfig lru;
+  RandomCacheConfig random;
 };
 
 struct BlockCacheConfig {
+  bool ingest_block_index;
   std::string policy_type;
   std::string db_type;
   DBConfig db;
@@ -44,11 +50,17 @@ inline void from_json(const json &j, LRUConfig &lru) {
   j.at("cache_size").get_to(lru.cache_size);
 }
 
+inline void from_json(const json &j, RandomCacheConfig &random) {
+  j.at("cache_size").get_to(random.cache_size);
+}
+
 inline void from_json(const json &j, CacheConfig &cc) {
   j.at("lru").get_to(cc.lru);
+  j.at("random").get_to(cc.random);
 }
 
 inline void from_json(const json &j, BlockCacheConfig &bcc) {
+  j.at("ingest_block_index").get_to(bcc.ingest_block_index);
   j.at("policy_type").get_to(bcc.policy_type);
   j.at("db_type").get_to(bcc.db_type);
   j.at("db").get_to(bcc.db);
