@@ -68,7 +68,9 @@ public:
     } else {
       cache_miss++;
       if (auto result_or_err = db->get(k)) {
-        return result_or_err.value();
+        V v = result_or_err.value();
+        cache->put(k, v);
+        return v;
       } else {
         // panic("value for key {} does not exist");
       }
