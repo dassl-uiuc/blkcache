@@ -44,8 +44,16 @@ public:
   }
 
   uint64_t hash_index(const std::string &s) {
-    auto index = std::hash<std::string>{}(s);
-    return index % num_entries;
+    if (block_cache_config.ingest_block_index) {
+      auto index = std::stoull(s);
+      if (index > num_entries) {
+        panic("Index {} > num_entries {}", index, num_entries);
+      }
+      return index;
+    } else {
+      auto index = std::hash<std::string>{}(s);
+      return index % num_entries;
+    }
   }
 
   DBError put(const std::string &key, const std::string &value) override {
