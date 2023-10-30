@@ -16,7 +16,7 @@ public:
   }
 
   void put(const KeyType &key, const ValueType &val) override {
-    info("put {} {}", key, val);
+    // info("put {} {}", key, val);
     auto it = item_map.find(key);
     if (it != item_map.end()) {
       item_list.erase(it->second);
