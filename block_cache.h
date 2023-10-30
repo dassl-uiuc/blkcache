@@ -58,10 +58,9 @@ public:
   const BlockCacheConfig &get_config() const { return block_cache_config; }
 
   void put(const K &k, const V &v) {
+    cache->put(k, v);
     if (cache->exist(k)) {
-
     } else {
-      cache->put(k, v);
       if (auto err = db->put(k, v); err != DBError::None) {
         panic("Error writing: {}", magic_enum::enum_name(err));
       }
