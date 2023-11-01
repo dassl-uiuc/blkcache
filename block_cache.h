@@ -77,6 +77,9 @@ public:
       if (auto result_or_err = db->get(k)) {
         V v = result_or_err.value();
         cache->put(k, v);
+
+        // Call cache to evict entries if needed
+        v = cache->get(k);
         return v;
       } else {
         // panic("value for key {} does not exist");
