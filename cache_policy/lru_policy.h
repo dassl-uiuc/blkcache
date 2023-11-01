@@ -34,7 +34,7 @@ public:
   void remove(const KeyType &key) override { panic("Unsupported"); }
 
   void dump(std::ofstream &os) override {
-    for (const auto &[k, v] : item_map) {
+    for (const auto &[k, v] : item_list) {
       os << k << "\n";
     }
   }
