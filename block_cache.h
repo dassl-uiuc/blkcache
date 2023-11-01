@@ -58,30 +58,36 @@ public:
   const BlockCacheConfig &get_config() const { return block_cache_config; }
 
   void put(const K &k, const V &v) {
-    cache->put(k, v);
     if (cache->exist(k)) {
     } else {
       if (auto err = db->put(k, v); err != DBError::None) {
         panic("Error writing: {}", magic_enum::enum_name(err));
       }
     }
+    cache->put(k, v);
   }
 
   bool exists_in_cache(const K &k) { return cache->exist(k); }
 
   V get(const K &k) {
     if (cache->exist(k)) {
+      cache_hit++;
       return cache->get(k);
     } else {
       cache_miss++;
       if (auto result_or_err = db->get(k)) {
         V v = result_or_err.value();
+
+        // Put the result in the cache
         cache->put(k, v);
 
-        // Call cache to evict entries if needed
-        v = cache->get(k);
         return v;
       } else {
+        cache_compulsory_miss++;
+
+        // Put dummy value in the cache
+        cache->put(k, V{});
+
         // panic("value for key {} does not exist");
       }
       return V{};
@@ -96,10 +102,24 @@ public:
     cache->dump(ofs);
   }
 
+  void dump_cache_info(fs::path p) {
+    std::ofstream ofs(p, std::ios::out | std::ios::trunc);
+    if (!ofs) {
+      panic("Unable to open file {}", p.string());
+    }
+    json j;
+    j["cache_hit"] = cache_hit;
+    j["cache_miss"] = cache_miss;
+    j["cache_compulsory_miss"] = cache_compulsory_miss;
+    ofs << j.dump(2);
+  }
+
 private:
   BlockCacheConfig block_cache_config;
   std::unique_ptr<DB> db = nullptr;
   std::unique_ptr<DefaultCachePolicy> cache = nullptr;
 
+  uint64_t cache_hit = 0;
   uint64_t cache_miss = 0;
+  uint64_t cache_compulsory_miss = 0;
 };
