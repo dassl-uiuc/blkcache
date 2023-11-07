@@ -120,7 +120,7 @@ public:
     char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
     auto result = pread(fd, buf, block_size, offset);
     if (result != block_size) {
-      panic("Read less than result {} < {}", result, block_size);
+      panic("Read less than result {} < {} at offset {}", result, block_size, offset);
     }
 
     // assert(pread(fd, buf, block_size, offset) == block_size);
