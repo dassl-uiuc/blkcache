@@ -34,7 +34,7 @@ public:
     num_entries = block_cache_config.db.block_db.num_entries;
     storage_size = num_entries * block_size;
     char *buf = nullptr;
-    constexpr std::size_t MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u;
+    constexpr std::size_t MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u * 1024u;
     if (posix_memalign((void **)&buf, block_size, MAX_POSIX_MEMALIGN_SIZE)) {
       perror("posix_memalign");
       exit(EXIT_FAILURE);
