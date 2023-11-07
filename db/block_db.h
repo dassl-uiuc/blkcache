@@ -33,6 +33,8 @@ public:
 
     num_entries = block_cache_config.db.block_db.num_entries;
     storage_size = num_entries * block_size;
+    info("BlockDB num_entries: {}, block_size: {}, storage_size: {}", num_entries, block_size, storage_size);
+
     char *buf = nullptr;
     constexpr std::size_t MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u * 1024u;
     if (posix_memalign((void **)&buf, block_size, MAX_POSIX_MEMALIGN_SIZE)) {
@@ -50,13 +52,13 @@ public:
     //   exit(EXIT_FAILURE);
     // }
 
-    auto remaining = storage_size;
-    while (remaining > 0)
-    {
-        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
-        assert(write(fd, buf, remaining_size) != -1);
-        remaining -= remaining_size;
-    }
+    // auto remaining = storage_size;
+    // while (remaining > 0)
+    // {
+    //     auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
+    //     assert(write(fd, buf, remaining_size) != -1);
+    //     remaining -= remaining_size;
+    // }
     fsync(fd);
     free(buf);
   }
@@ -130,7 +132,8 @@ public:
     char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
     auto result = pread(fd, buf, block_size, offset);
     if (result != block_size) {
-      panic("Read less than result {} < {} at offset {}", result, block_size, offset);
+      // panic("Read less than result {} < {} at offset {}", result, block_size, offset);
+      return tl::unexpected{DBError::KeyDoesNotExist};
     }
 
     // assert(pread(fd, buf, block_size, offset) == block_size);
