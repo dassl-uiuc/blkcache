@@ -35,7 +35,7 @@ public:
     storage_size = num_entries * block_size;
     char *buf = nullptr;
     int64_t remaining = storage_size;
-    constexpr auto MAX_POSIX_MEMALIGN_SIZE = 1024 * 1024;
+    constexpr auto MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u;
     if (posix_memalign((void **)&buf, block_size, MAX_POSIX_MEMALIGN_SIZE)) {
       perror("posix_memalign");
       exit(EXIT_FAILURE);
@@ -43,7 +43,7 @@ public:
     lseek(fd, 0, SEEK_SET);
     while (remaining > 0)
     {
-        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, static_cast<int64_t>(storage_size));
+        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, storage_size);
         assert(write(fd, buf, remaining_size) != -1);
         remaining -= MAX_POSIX_MEMALIGN_SIZE;
     }
