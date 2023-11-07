@@ -20,7 +20,7 @@ public:
     DB::init(block_cache_config);
 
     fd = open(block_cache_config.db.block_db.filename.c_str(),
-              O_CREAT | O_WRONLY | O_TRUNC | O_DIRECT, S_IRWXU);
+              O_CREAT | O_RDWR | O_TRUNC | O_DIRECT, S_IRWXU);
 
     if (fd == -1) {
       perror("open");
@@ -34,31 +34,22 @@ public:
     num_entries = block_cache_config.db.block_db.num_entries;
     storage_size = num_entries * block_size;
     char *buf = nullptr;
-    auto remaining = storage_size;
     constexpr std::size_t MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u;
     if (posix_memalign((void **)&buf, block_size, MAX_POSIX_MEMALIGN_SIZE)) {
       perror("posix_memalign");
       exit(EXIT_FAILURE);
     }
     lseek(fd, 0, SEEK_SET);
-    while (remaining > 0)
-    {
-        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
-        assert(write(fd, buf, remaining_size) != -1);
-        remaining -= remaining_size;
-    }
+    ftruncate(fd, storage_size);
+    auto remaining = storage_size;
+    // while (remaining > 0)
+    // {
+    //     auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
+    //     assert(write(fd, buf, remaining_size) != -1);
+    //     remaining -= remaining_size;
+    // }
     fsync(fd);
     free(buf);
-
-    ::close(fd);
-
-    fd = open(block_cache_config.db.block_db.filename.c_str(),
-          O_RDWR | O_DIRECT, S_IRWXU);
-
-    if (fd == -1) {
-      perror("open");
-      exit(EXIT_FAILURE);
-    }
   }
 
   uint64_t hash_index(const std::string &s) {
