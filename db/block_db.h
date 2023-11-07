@@ -32,15 +32,21 @@ public:
     const auto& block_size = block_cache_config.db.block_db.block_size;
 
     num_entries = block_cache_config.db.block_db.num_entries;
-    cache_size = num_entries * block_size;
+    storage_size = num_entries * block_size;
     char *buf = nullptr;
-    if (posix_memalign((void **)&buf, block_size, cache_size)) {
+    int64_t remaining = storage_size;
+    constexpr auto MAX_POSIX_MEMALIGN_SIZE = 1024 * 1024;
+    if (posix_memalign((void **)&buf, block_size, MAX_POSIX_MEMALIGN_SIZE)) {
       perror("posix_memalign");
       exit(EXIT_FAILURE);
     }
-
     lseek(fd, 0, SEEK_SET);
-    assert(write(fd, buf, cache_size) != -1);
+    while (remaining > 0)
+    {
+        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, storage_size);
+        assert(write(fd, buf, remaining_size) != -1);
+        remaining -= MAX_POSIX_MEMALIGN_SIZE;
+    }
     fsync(fd);
     free(buf);
   }
@@ -161,6 +167,6 @@ private:
   std::unordered_map<std::string, int> key_to_offset;
   int fd = -1;
   int num_entries = 0;
-  size_t cache_size = 0;
+  size_t storage_size = 0;
   size_t cursor = 0;
 };
