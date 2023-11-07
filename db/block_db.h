@@ -41,22 +41,22 @@ public:
     }
     lseek(fd, 0, SEEK_SET);
 
-    lseek(fd, storage_size, SEEK_SET);
-    write(fd, buf, 1);
-    lseek(fd, 0, SEEK_SET);
+    // lseek(fd, storage_size, SEEK_SET);
+    // write(fd, buf, 1);
+    // lseek(fd, 0, SEEK_SET);
 
     // if (ftruncate(fd, storage_size)) {
     //   perror("ftruncate");
     //   exit(EXIT_FAILURE);
     // }
 
-    // auto remaining = storage_size;
-    // while (remaining > 0)
-    // {
-    //     auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
-    //     assert(write(fd, buf, remaining_size) != -1);
-    //     remaining -= remaining_size;
-    // }
+    auto remaining = storage_size;
+    while (remaining > 0)
+    {
+        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
+        assert(write(fd, buf, remaining_size) != -1);
+        remaining -= remaining_size;
+    }
     fsync(fd);
     free(buf);
   }
