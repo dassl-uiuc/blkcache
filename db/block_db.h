@@ -40,7 +40,10 @@ public:
       exit(EXIT_FAILURE);
     }
     lseek(fd, 0, SEEK_SET);
-    ftruncate(fd, storage_size);
+    if (ftruncate(fd, storage_size)) {
+      perror("ftruncate");
+      exit(EXIT_FAILURE);
+    }
     auto remaining = storage_size;
     // while (remaining > 0)
     // {
