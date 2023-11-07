@@ -20,7 +20,7 @@ public:
     DB::init(block_cache_config);
 
     fd = open(block_cache_config.db.block_db.filename.c_str(),
-              O_CREAT | O_RDWR | O_TRUNC | O_DIRECT, S_IRWXU);
+              O_CREAT | O_WRONLY | O_TRUNC | O_DIRECT, S_IRWXU);
 
     if (fd == -1) {
       perror("open");
@@ -47,8 +47,18 @@ public:
         assert(write(fd, buf, remaining_size) != -1);
         remaining -= remaining_size;
     }
-    sync(fd);
+    fsync(fd);
     free(buf);
+
+    ::close(fd);
+
+    fd = open(block_cache_config.db.block_db.filename.c_str(),
+          O_RDWR | O_DIRECT, S_IRWXU);
+
+    if (fd == -1) {
+      perror("open");
+      exit(EXIT_FAILURE);
+    }
   }
 
   uint64_t hash_index(const std::string &s) {
