@@ -43,7 +43,8 @@ public:
     lseek(fd, 0, SEEK_SET);
     while (remaining > 0)
     {
-        assert(write(fd, buf, MAX_POSIX_MEMALIGN_SIZE) != -1);
+        auto remaining_size = std::min(MAX_POSIX_MEMALIGN_SIZE, remaining);
+        assert(write(fd, buf, remaining_size) != -1);
         remaining -= MAX_POSIX_MEMALIGN_SIZE;
     }
     fsync(fd);
