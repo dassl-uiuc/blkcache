@@ -35,7 +35,7 @@ public:
     storage_size = num_entries * block_size;
     char *buf = nullptr;
     int64_t remaining = storage_size;
-    constexpr auto MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u;
+    constexpr std::size_t MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u;
     if (posix_memalign((void **)&buf, block_size, MAX_POSIX_MEMALIGN_SIZE)) {
       perror("posix_memalign");
       exit(EXIT_FAILURE);
