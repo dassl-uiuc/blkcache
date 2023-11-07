@@ -179,7 +179,7 @@ public:
 private:
   std::unordered_map<std::string, int> key_to_offset;
   int fd = -1;
-  int num_entries = 0;
+  size_t num_entries = 0;
   size_t storage_size = 0;
   size_t cursor = 0;
 };
