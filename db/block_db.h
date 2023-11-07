@@ -47,7 +47,7 @@ public:
         assert(write(fd, buf, remaining_size) != -1);
         remaining -= remaining_size;
     }
-    fsync(fd);
+    sync(fd);
     free(buf);
   }
 
