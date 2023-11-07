@@ -29,10 +29,12 @@ public:
 
     info("Opened BlockDB: {}", block_cache_config.db.block_db.filename);
 
+    const auto& block_size = block_cache_config.db.block_db.block_size;
+
     num_entries = block_cache_config.db.block_db.num_entries;
-    cache_size = num_entries * BLOCK_SIZE;
+    cache_size = num_entries * block_size;
     char *buf = nullptr;
-    if (posix_memalign((void **)&buf, BLOCK_SIZE, cache_size)) {
+    if (posix_memalign((void **)&buf, block_size, cache_size)) {
       perror("posix_memalign");
       exit(EXIT_FAILURE);
     }
@@ -62,6 +64,8 @@ public:
     //   return DBError::WriteKeyExists;
     // }
 
+    const auto& block_size = block_cache_config.db.block_db.block_size;
+
     char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
     auto buf_offset = 0;
     auto copy_data = [&](auto v) {
@@ -70,7 +74,7 @@ public:
     };
 
     auto index = hash_index(key);
-    auto offset = index * BLOCK_SIZE;
+    auto offset = index * block_size;
 
     uint32_t avaliable = 1;
     copy_data(avaliable);
@@ -83,13 +87,13 @@ public:
     memcpy(buf + buf_offset, (char *)value.c_str(), value.length());
     buf_offset += value.length();
 
-    if (buf_offset > BLOCK_SIZE) {
+    if (buf_offset > block_size) {
       return DBError::WriteOutOfBounds;
     }
 
     // pwrite(fd, buf, BLOCK_SIZE, offset);
     lseek(fd, offset, SEEK_SET);
-    if (write(fd, buf, BLOCK_SIZE) == -1) {
+    if (write(fd, buf, block_size) == -1) {
       return DBError::WriteFailed;
     }
     fsync(fd);
@@ -102,16 +106,18 @@ public:
     //     found != std::end(key_to_offset)) {
     //   auto offset = found->second;
 
+    const auto& block_size = block_cache_config.db.block_db.block_size;
+
     auto index = hash_index(key);
-    auto offset = index * BLOCK_SIZE;
+    auto offset = index * block_size;
 
     char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
-    auto result = pread(fd, buf, BLOCK_SIZE, offset);
-    if (result != BLOCK_SIZE) {
-      panic("Read less than result {} < {}", result, BLOCK_SIZE);
+    auto result = pread(fd, buf, block_size, offset);
+    if (result != block_size) {
+      panic("Read less than result {} < {}", result, block_size);
     }
 
-    // assert(pread(fd, buf, BLOCK_SIZE, offset) == BLOCK_SIZE);
+    // assert(pread(fd, buf, block_size, offset) == block_size);
 
     auto buf_offset = 0;
     auto read_data = [&](auto &v) {

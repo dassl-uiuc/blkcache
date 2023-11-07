@@ -5,7 +5,8 @@
     "db": {
         "block_db": {
             "filename": "database.db",
-            "num_entries": 1024
+            "num_entries": 1024,
+            "block_size": 512
         }
     },
     "cache": {
