@@ -76,6 +76,7 @@ public:
     } else {
       cache_miss++;
       if (auto result_or_err = db->get(k)) {
+        cache_not_compulsory_miss++;
         V v = result_or_err.value();
 
         // Put the result in the cache
@@ -110,6 +111,7 @@ public:
     json j;
     j["cache_hit"] = cache_hit;
     j["cache_miss"] = cache_miss;
+    j["cache_not_compulsory_miss"] = cache_not_compulsory_miss;
     j["cache_compulsory_miss"] = cache_compulsory_miss;
     ofs << j.dump(2);
   }
@@ -121,5 +123,6 @@ private:
 
   uint64_t cache_hit = 0;
   uint64_t cache_miss = 0;
+  uint64_t cache_not_compulsory_miss = 0;
   uint64_t cache_compulsory_miss = 0;
 };
