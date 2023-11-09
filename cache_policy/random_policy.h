@@ -15,7 +15,7 @@ public:
     distribution = std::uniform_int_distribution<int>(0, cache_size - 1);
   }
 
-  void put(const KeyType &key, const ValueType &val) override {
+  void put(const KeyType &key, const ValueType &val, bool is_write = false) override {
     // info("put {} {}", key, val);
     auto it = item_map.find(key);
     if (it != item_map.end()) {

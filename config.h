@@ -25,9 +25,18 @@ struct RandomCacheConfig {
   int cache_size;
 };
 
+struct ReadWriteConfig {
+  int cache_size;
+  float read_ratio;
+  float write_ratio;
+  std::string read_cache;
+  std::string write_cache;
+};
+
 struct CacheConfig {
   LRUConfig lru;
   RandomCacheConfig random;
+  ReadWriteConfig read_write;
 };
 
 struct BlockCacheConfig {
@@ -56,9 +65,18 @@ inline void from_json(const json &j, RandomCacheConfig &random) {
   j.at("cache_size").get_to(random.cache_size);
 }
 
+inline void from_json(const json &j, ReadWriteConfig &read_write) {
+  j.at("cache_size").get_to(read_write.cache_size);
+  j.at("read_ratio").get_to(read_write.read_ratio);
+  j.at("write_ratio").get_to(read_write.write_ratio);
+  j.at("read_cache").get_to(read_write.read_cache);
+  j.at("write_cache").get_to(read_write.write_cache);
+}
+
 inline void from_json(const json &j, CacheConfig &cc) {
   j.at("lru").get_to(cc.lru);
   j.at("random").get_to(cc.random);
+  j.at("read_write").get_to(cc.read_write);
 }
 
 inline void from_json(const json &j, BlockCacheConfig &bcc) {

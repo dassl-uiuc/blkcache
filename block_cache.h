@@ -10,6 +10,7 @@
 #include "cache_policy/cache_policy.h"
 #include "cache_policy/lru_policy.h"
 #include "cache_policy/random_policy.h"
+#include "cache_policy/read_write_policy.h"
 
 #include "db/block_db.h"
 #include "db/db.h"
@@ -33,12 +34,46 @@ public:
       panic("Block db type '{}' is not supported", block_cache_config.db_type);
     }
 
+    auto make_lru_cache = [](const auto& cache_size) {
+      return std::make_unique<LRUCache<K, V>>(cache_size);
+    };
+
+    auto make_random_cache = [](const auto& cache_size) {
+      return std::make_unique<RandomCache<K, V>>(cache_size);
+    };
+
     if (block_cache_config.policy_type == "lru") {
-      cache = std::make_unique<LRUCache<K, V>>(
-          block_cache_config.cache.lru.cache_size);
+      cache = make_lru_cache(block_cache_config.cache.lru.cache_size);
     } else if (block_cache_config.policy_type == "random") {
-      cache = std::make_unique<RandomCache<K, V>>(
-          block_cache_config.cache.random.cache_size);
+      cache = make_random_cache(block_cache_config.cache.random.cache_size);
+    } else if (block_cache_config.policy_type == "read_write") {
+      if (block_cache_config.cache.read_write.read_ratio + block_cache_config.cache.read_write.write_ratio != 1.0) {
+        panic("Read ratio and write ratio must sum to 1.0");
+      }
+      
+      std::unique_ptr<DefaultCachePolicy> read_cache = nullptr;
+      std::unique_ptr<DefaultCachePolicy> write_cache = nullptr;
+
+      auto read_cache_size = static_cast<uint64_t>(block_cache_config.cache.read_write.cache_size * block_cache_config.cache.read_write.read_ratio);
+      auto write_cache_size = static_cast<uint64_t>(block_cache_config.cache.read_write.cache_size * block_cache_config.cache.read_write.write_ratio);
+      if (block_cache_config.cache.read_write.read_cache == "lru") {
+        read_cache = make_lru_cache(read_cache_size);
+      } else if (block_cache_config.cache.read_write.read_cache == "random") {
+        read_cache = make_random_cache(write_cache_size);
+      } else {
+        panic("Read cache type '{}' is not supported", block_cache_config.cache.read_write.read_cache);
+      }
+
+      if (block_cache_config.cache.read_write.write_cache == "lru") {
+        write_cache = make_lru_cache(read_cache_size);
+      } else if (block_cache_config.cache.read_write.write_cache == "random") {
+        write_cache = make_random_cache(write_cache_size);
+      } else {
+        panic("Write cache type '{}' is not supported", block_cache_config.cache.read_write.write_cache);
+      }
+
+      cache = std::make_unique<ReadWriteCache<K, V>>(
+          block_cache_config.cache.read_write.cache_size, std::move(read_cache), std::move(write_cache));
     } else {
       panic("Block policy type '{}' is not supported",
             block_cache_config.policy_type);
@@ -64,7 +99,7 @@ public:
         panic("Error writing: {}", magic_enum::enum_name(err));
       }
     }
-    cache->put(k, v);
+    cache->put(k, v, true);
   }
 
   bool exists_in_cache(const K &k) { return cache->exist(k); }
