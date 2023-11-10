@@ -36,7 +36,7 @@ public:
 
   void remove(const KeyType &key) override { panic("Unsupported"); }
 
-  void dump(std::ofstream &os) override {
+  void dump(std::ostream &os) override {
     read_cache->dump(os);
     write_cache->dump(os);
   }

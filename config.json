@@ -18,8 +18,8 @@
         },
         "read_write": {
             "cache_size": 4,
-            "read_ratio": 0.9,
-            "write_ratio": 0.1,
+            "read_ratio": 0.75,
+            "write_ratio": 0.25,
             "read_cache": "lru",
             "write_cache": "lru"
         }

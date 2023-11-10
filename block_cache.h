@@ -59,13 +59,13 @@ public:
       if (block_cache_config.cache.read_write.read_cache == "lru") {
         read_cache = make_lru_cache(read_cache_size);
       } else if (block_cache_config.cache.read_write.read_cache == "random") {
-        read_cache = make_random_cache(write_cache_size);
+        read_cache = make_random_cache(read_cache_size);
       } else {
         panic("Read cache type '{}' is not supported", block_cache_config.cache.read_write.read_cache);
       }
 
       if (block_cache_config.cache.read_write.write_cache == "lru") {
-        write_cache = make_lru_cache(read_cache_size);
+        write_cache = make_lru_cache(write_cache_size);
       } else if (block_cache_config.cache.read_write.write_cache == "random") {
         write_cache = make_random_cache(write_cache_size);
       } else {
@@ -128,6 +128,10 @@ public:
       }
       return V{};
     }
+  }
+
+  auto& get_cache() {
+    return cache;
   }
 
   void dump_cache(fs::path p) {

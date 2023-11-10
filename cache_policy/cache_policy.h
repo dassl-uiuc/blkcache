@@ -12,7 +12,7 @@ public:
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;
-  virtual void dump(std::ofstream &os) = 0;
+  virtual void dump(std::ostream &os) = 0;
 
 protected:
   std::size_t cache_size;
