@@ -93,6 +93,7 @@ public:
   const BlockCacheConfig &get_config() const { return block_cache_config; }
 
   void put(const K &k, const V &v) {
+    writes += 1;
     if (cache->exist(k)) {
     } else {
       if (auto err = db->put(k, v); err != DBError::None) {
@@ -105,6 +106,7 @@ public:
   bool exists_in_cache(const K &k) { return cache->exist(k); }
 
   V get(const K &k) {
+    reads += 1; 
     if (cache->exist(k)) {
       cache_hit++;
       return cache->get(k);
@@ -148,6 +150,8 @@ public:
       panic("Unable to open file {}", p.string());
     }
     json j;
+    j["writes"] = writes;
+    j["reads"] = reads;
     j["cache_hit"] = cache_hit;
     j["cache_miss"] = cache_miss;
     j["cache_not_compulsory_miss"] = cache_not_compulsory_miss;
@@ -160,6 +164,8 @@ private:
   std::unique_ptr<DB> db = nullptr;
   std::unique_ptr<DefaultCachePolicy> cache = nullptr;
 
+  uint64_t writes = 0;
+  uint64_t reads = 0;
   uint64_t cache_hit = 0;
   uint64_t cache_miss = 0;
   uint64_t cache_not_compulsory_miss = 0;
