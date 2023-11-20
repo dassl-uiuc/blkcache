@@ -20,7 +20,7 @@ public:
     DB::init(block_cache_config);
 
     fd = open(block_cache_config.db.block_db.filename.c_str(),
-              O_CREAT | O_RDWR | O_TRUNC | O_DIRECT, S_IRWXU);
+              O_CREAT | O_RDWR | O_TRUNC | O_DIRECT | O_SYNC, S_IRWXU);
 
     if (fd == -1) {
       perror("open");
@@ -59,7 +59,7 @@ public:
     //     assert(write(fd, buf, remaining_size) != -1);
     //     remaining -= remaining_size;
     // }
-    fsync(fd);
+    // fsync(fd);
     free(buf);
   }
 
@@ -114,7 +114,7 @@ public:
     if (write(fd, buf, block_size) == -1) {
       return DBError::WriteFailed;
     }
-    fsync(fd);
+    // fsync(fd);
 
     return DBError::None;
   }
