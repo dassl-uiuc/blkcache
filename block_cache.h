@@ -10,7 +10,7 @@
 #include "cache_policy/cache_policy.h"
 #include "cache_policy/lru_policy.h"
 #include "cache_policy/random_policy.h"
-#include "cache_policy/read_write_policy.h"
+#include "cache_policy/split_policy.h"
 
 #include "db/block_db.h"
 #include "db/db.h"
@@ -46,34 +46,34 @@ public:
       cache = make_lru_cache(block_cache_config.cache.lru.cache_size);
     } else if (block_cache_config.policy_type == "random") {
       cache = make_random_cache(block_cache_config.cache.random.cache_size);
-    } else if (block_cache_config.policy_type == "read_write") {
-      if (block_cache_config.cache.read_write.read_ratio + block_cache_config.cache.read_write.write_ratio != 1.0) {
+    } else if (block_cache_config.policy_type == "split") {
+      if (block_cache_config.cache.split.owning_ratio + block_cache_config.cache.split.nonowning_ratio != 1.0) {
         panic("Read ratio and write ratio must sum to 1.0");
       }
       
-      std::unique_ptr<DefaultCachePolicy> read_cache = nullptr;
-      std::unique_ptr<DefaultCachePolicy> write_cache = nullptr;
+      std::unique_ptr<DefaultCachePolicy> owning_cache = nullptr;
+      std::unique_ptr<DefaultCachePolicy> nonowning_cache = nullptr;
 
-      auto read_cache_size = static_cast<uint64_t>(block_cache_config.cache.read_write.cache_size * block_cache_config.cache.read_write.read_ratio);
-      auto write_cache_size = static_cast<uint64_t>(block_cache_config.cache.read_write.cache_size * block_cache_config.cache.read_write.write_ratio);
-      if (block_cache_config.cache.read_write.read_cache == "lru") {
-        read_cache = make_lru_cache(read_cache_size);
-      } else if (block_cache_config.cache.read_write.read_cache == "random") {
-        read_cache = make_random_cache(read_cache_size);
+      auto owning_cache_size = static_cast<uint64_t>(block_cache_config.cache.split.cache_size * block_cache_config.cache.split.owning_ratio);
+      auto nonowning_cache_size = static_cast<uint64_t>(block_cache_config.cache.split.cache_size * block_cache_config.cache.split.nonowning_ratio);
+      if (block_cache_config.cache.split.owning_cache_type == "lru") {
+        owning_cache = make_lru_cache(owning_cache_size);
+      } else if (block_cache_config.cache.split.owning_cache_type == "random") {
+        owning_cache = make_random_cache(owning_cache_size);
       } else {
-        panic("Read cache type '{}' is not supported", block_cache_config.cache.read_write.read_cache);
+        panic("Read cache type '{}' is not supported", block_cache_config.cache.split.owning_cache_type);
       }
 
-      if (block_cache_config.cache.read_write.write_cache == "lru") {
-        write_cache = make_lru_cache(write_cache_size);
-      } else if (block_cache_config.cache.read_write.write_cache == "random") {
-        write_cache = make_random_cache(write_cache_size);
+      if (block_cache_config.cache.split.nonowning_cache_type == "lru") {
+        nonowning_cache = make_lru_cache(nonowning_cache_size);
+      } else if (block_cache_config.cache.split.nonowning_cache_type == "random") {
+        nonowning_cache = make_random_cache(nonowning_cache_size);
       } else {
-        panic("Write cache type '{}' is not supported", block_cache_config.cache.read_write.write_cache);
+        panic("Write cache type '{}' is not supported", block_cache_config.cache.split.nonowning_cache_type);
       }
 
-      cache = std::make_unique<ReadWriteCache<K, V>>(
-          block_cache_config.cache.read_write.cache_size, std::move(read_cache), std::move(write_cache));
+      cache = std::make_unique<SplitCache<K, V>>(
+          block_cache_config.cache.split.cache_size, std::move(owning_cache), std::move(nonowning_cache));
     } else {
       panic("Block policy type '{}' is not supported",
             block_cache_config.policy_type);
@@ -92,7 +92,7 @@ public:
 
   const BlockCacheConfig &get_config() const { return block_cache_config; }
 
-  void put(const K &k, const V &v) {
+  void put(const K &k, const V &v, bool owning = true) {
     writes += 1;
     if (cache->exist(k)) {
     } else {
@@ -100,13 +100,13 @@ public:
         panic("Error writing: {}", magic_enum::enum_name(err));
       }
     }
-    cache->put(k, v, true);
+    cache->put(k, v, owning);
   }
 
   bool exists_in_cache(const K &k) { return cache->exist(k); }
 
-  V get(const K &k) {
-    reads += 1; 
+  V get(const K &k, bool owning = true) {
+    reads += 1;
     if (cache->exist(k)) {
       cache_hit++;
       return cache->get(k);
@@ -117,14 +117,14 @@ public:
         V v = result_or_err.value();
 
         // Put the result in the cache
-        cache->put(k, v);
+        cache->put(k, v, owning);
 
         return v;
       } else {
         cache_compulsory_miss++;
 
         // Put dummy value in the cache
-        cache->put(k, V{});
+        cache->put(k, V{}, owning);
 
         // panic("value for key {} does not exist");
       }

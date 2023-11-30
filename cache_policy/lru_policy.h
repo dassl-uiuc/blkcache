@@ -11,7 +11,7 @@ class LRUCache : public CachePolicy<KeyType, ValueType> {
 public:
   LRUCache(uint64_t cache_size) : CachePolicy<KeyType, ValueType>(cache_size) {}
 
-  void put(const KeyType &key, const ValueType &val, bool is_write = false) override {
+  void put(const KeyType &key, const ValueType &val, bool owning = false) override {
     auto it = item_map.find(key);
     if (it != item_map.end()) {
       item_list.erase(it->second);

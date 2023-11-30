@@ -16,12 +16,12 @@
         "random": {
             "cache_size": 2
         },
-        "read_write": {
+        "split": {
             "cache_size": 4,
-            "read_ratio": 0.75,
-            "write_ratio": 0.25,
-            "read_cache": "lru",
-            "write_cache": "lru"
+            "owning_ratio": 0.75,
+            "nonowning_ratio": 0.25,
+            "owning_cache_type": "lru",
+            "nonowning_cache_type": "lru"
         }
     }
 }

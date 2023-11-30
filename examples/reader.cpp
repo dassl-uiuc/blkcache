@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
   info("Got B {}", block_cache.exists_in_cache("B"));
   info("Got C {}", block_cache.exists_in_cache("C"));
 
-  config.policy_type = "read_write";
+  config.policy_type = "split";
   block_cache = BlockCache<std::string, std::string>(config);
 
   // block_cache.put("A", "A");
@@ -42,16 +42,23 @@ int main(int argc, char **argv) {
   // block_cache.put("F", "F");
   // block_cache.put("G", "G");
   // block_cache.put("H", "H");
+  bool owning = false;
+  for (int i = 0; i < 1; i++)
+  {
+    char c = 'A' + i;
+    block_cache.put(std::string(1, c), std::string(1, c), owning);
+  }
+  owning = true;
   for (int i = 0; i < 8; i++)
   {
     char c = 'A' + i;
-    block_cache.put(std::string(1, c), std::string(1, c));
+    block_cache.put(std::string(1, c), std::string(1, c), owning);
   }
 
   for (int i = 0; i < 3; i++)
   {
     char c = 'A' + i;
-    block_cache.get(std::string(1, c));
+    // block_cache.get(std::string(1, c));
   }
 
   block_cache.get_cache()->dump(std::cout);
