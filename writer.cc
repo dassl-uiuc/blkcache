@@ -10,7 +10,7 @@
 int main(int argc, char** argv) {
 	char* buf;
 	int numblks = atoi(argv[1]);
-	int fd = open("foo", O_RDWR | O_CREAT, S_IRWXU);
+	int fd = open("/dev/mapper/disag_blk_target_device", O_RDWR | O_CREAT, S_IRWXU);
 	assert(fd);
 	buf = (char*) malloc(numblks * 4096);
 	memset(buf, 'a', numblks * 4096);
@@ -20,7 +20,6 @@ int main(int argc, char** argv) {
 	fsync(fd);
 	auto elapsed = std::chrono::high_resolution_clock::now() - start;
 
-	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
-        elapsed).count();
+	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
 	std::cout << "Writing "<< numblks << " blks took " << microseconds/1000.0 << " ms" << std::endl;
 }
