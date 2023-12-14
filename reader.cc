@@ -24,6 +24,9 @@ int main(int argc, char** argv) {
 	{
 		uint64_t blk_read = rand()%num_blks;
 		assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
+		char num[20];
+		sprintf(num, "%lu", blk_read);
+		assert(strcmp(buf, num) == 0);
 		if (i % 10000 == 0) printf("ops_finished: %lu\n", i);
 	}
 

@@ -13,7 +13,11 @@ int main(int argc, char** argv) {
 	int fd = open("/dev/mapper/disag_blk_target_device", O_RDWR | O_CREAT, S_IRWXU);
 	assert(fd);
 	buf = (char*) malloc(numblks * 4096);
-	memset(buf, 'a', numblks * 4096);
+	int i;
+	for (i = 0; i < numblks; i++)
+	{
+		sprintf(&buf[i * 4096], "%d", i);
+	}
 	
 	auto start = std::chrono::high_resolution_clock::now();
 	write(fd, buf, numblks * 4096);
