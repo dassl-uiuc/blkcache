@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
 	{
 		uint64_t blk_read = rand()%num_blks;
 		assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
+		if (i % 10000 == 0) printf("ops_finished: %lu\n", i);
 	}
 
 	auto elapsed = std::chrono::high_resolution_clock::now() - start;
