@@ -11,15 +11,15 @@
 #define BLKSZ 4096
 
 int main(int argc, char** argv) {
-	int fd = open("foo", O_RDWR | O_DIRECT);
+	int fd = open("/dev/mapper/disag_blk_target_device", O_RDWR | O_DIRECT);
 	assert(fd);
 	int cache_perc = atoi(argv[1]);
+	int num_blks = atoi(argv[2]);
 
-	uint64_t num_blks = 10000;
 	uint64_t num_ops = 10 * num_blks;	
 	float cp = num_blks * (cache_perc/100.0);
 	uint64_t cache_size = (uint64_t) cp;
-	//std::cout << "Cache size:"<<  cache_perc <<"%; Absolute size:" << cache_size << std::endl;
+	std::cout << "Cache size:"<<  cache_perc <<"%; Absolute size:" << cache_size << std::endl;
 	auto cache = new LRUCache<uint64_t, std::string>(cache_size);
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -45,6 +45,6 @@ int main(int argc, char** argv) {
 
 	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
         elapsed).count();
-	std::cout << cache_perc <<"%\t"<< microseconds/1000.0 << "\t" << cache_misses<< std::endl;
+	std::cout << cache_perc <<"%\t"<< microseconds << "\t" << cache_misses<< std::endl;
 	
 }
