@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
 	uint64_t i = 0;
 	uint64_t cache_misses = 0;
 	static char buf[BLKSZ] __attribute__ ((__aligned__ (BLKSZ)));
-	srand(time(NULL));
+	srand(0);
 	while(i++ < num_ops)
 	{
 		uint64_t blk_read = rand()%num_blks;
