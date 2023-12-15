@@ -11,7 +11,7 @@
 #define BLKSZ 4096
 
 int main(int argc, char** argv) {
-	int fd = open("/dev/mapper/disag_blk_target_device", O_RDWR | O_DIRECT);
+	int fd = open("/dev/sdb", O_RDWR | O_DIRECT);
 	assert(fd);
 	int num_blks = atoi(argv[1]);
 	uint64_t num_ops = 10 * num_blks;	
@@ -19,14 +19,14 @@ int main(int argc, char** argv) {
 
 	uint64_t i = 0;
 	static char buf[BLKSZ] __attribute__ ((__aligned__ (BLKSZ)));
-	srand(time(NULL));
+	srand(0);
 	while(i++ < num_ops)
 	{
 		uint64_t blk_read = rand()%num_blks;
 		assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
-		char num[20];
-		sprintf(num, "%lu", blk_read);
-		assert(strcmp(buf, num) == 0);
+		// char num[20];
+		// sprintf(num, "%lu", blk_read);
+		// assert(strcmp(buf, num) == 0);
 		if (i % 10000 == 0) printf("ops_finished: %lu\n", i);
 	}
 

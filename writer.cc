@@ -10,7 +10,7 @@
 int main(int argc, char** argv) {
 	char* buf;
 	int numblks = atoi(argv[1]);
-	int fd = open("/dev/mapper/disag_blk_target_device", O_RDWR | O_CREAT, S_IRWXU);
+	int fd = open("/dev/sdb", O_RDWR | O_CREAT, S_IRWXU);
 	assert(fd);
 	buf = (char*) malloc(numblks * 4096);
 	int i;
