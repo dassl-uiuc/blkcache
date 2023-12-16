@@ -10,7 +10,8 @@
 int main(int argc, char** argv) {
 	char* buf;
 	int numblks = atoi(argv[1]);
-	int fd = open("/rbd/foo", O_RDWR | O_CREAT, S_IRWXU);
+	std::string file_name(argv[2]);
+	int fd = open(file_name.c_str(), O_RDWR | O_CREAT, S_IRWXU);
 	assert(fd);
 	buf = (char*) malloc(numblks * 4096);
 	memset(buf, 'a', numblks * 4096);

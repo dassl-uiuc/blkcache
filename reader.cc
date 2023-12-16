@@ -15,16 +15,17 @@ template <typename Key, typename Value>
 using fifo_cache_t = typename caches::fixed_sized_cache<Key, Value, caches::FIFOCachePolicy>;
 
 int main(int argc, char** argv) {
-	int fd = open("/rbd/foo", O_RDWR | O_DIRECT);
-	assert(fd);
 	int cache_perc = atoi(argv[1]);
 	int num_blks = atoi(argv[2]);
+	std::string file_name(argv[3]);
+	int fd = open(file_name.c_str(), O_RDWR | O_DIRECT);
+	assert(fd);
 
 	uint64_t num_ops = 10 * num_blks;	
 	float cp = num_blks * (cache_perc/100.0);
 	uint64_t cache_size = (uint64_t) cp;
 	std::cout << "Cache size:"<<  cache_perc <<"%; Absolute size:" << cache_size << std::endl;
-	auto cache = new fifo_cache_t<uint64_t, std::string>(cache_size);
+	auto cache = cache_size != 0 ? new fifo_cache_t<uint64_t, std::string>(cache_size): NULL;
 	auto start = std::chrono::high_resolution_clock::now();
 
 	uint64_t i = 0;
@@ -34,13 +35,15 @@ int main(int argc, char** argv) {
 	while(i++ < num_ops)
 	{
 		uint64_t blk_read = rand()%num_blks;
-		if(cache->Cached(blk_read)) {
+		if(cache && cache->Cached(blk_read)) {
 			auto ret = cache->Get(blk_read);		
 		} else {
-			//std::cout << "Reading..."<<blk_read<<std::endl;
 			assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
-			std::string contents(buf, BLKSZ);
-			cache->Put(blk_read, contents);
+			if (cache)
+			{
+				std::string contents(buf, BLKSZ);
+				cache->Put(blk_read, contents);
+			}
 			cache_misses++;
 		}
 	}
