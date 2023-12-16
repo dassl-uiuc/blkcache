@@ -27,6 +27,13 @@ int main(int argc, char** argv) {
 	std::cout << "Cache size:"<<  cache_perc <<"%; Absolute size:" << cache_size << std::endl;
 	auto cache = cache_size != 0 ? new fifo_cache_t<uint64_t, std::string>(cache_size): NULL;
 	auto start = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::high_resolution_clock> start_capacity;
+	std::unordered_set<uint64_t> cold_cache;
+
+	long long elapsed_capacity = 0;
+	uint64_t miss_capacity = 0;
+	uint64_t non_cold_acess = 0;
+	bool timed_capacity = false;
 
 	uint64_t i = 0;
 	uint64_t cache_misses = 0;
@@ -35,6 +42,14 @@ int main(int argc, char** argv) {
 	while(i++ < num_ops)
 	{
 		uint64_t blk_read = rand()%num_blks;
+		if (cold_cache.find(blk_read) == cold_cache.end()) {
+			cold_cache.insert(blk_read);
+		} else {
+			// non-cold access
+			start_capacity = std::chrono::high_resolution_clock::now();
+			timed_capacity = true;
+			non_cold_acess++;
+		}
 		if(cache && cache->Cached(blk_read)) {
 			auto ret = cache->Get(blk_read);		
 		} else {
@@ -45,6 +60,13 @@ int main(int argc, char** argv) {
 				cache->Put(blk_read, contents);
 			}
 			cache_misses++;
+			if (timed_capacity)
+				miss_capacity++;
+		}
+		if (timed_capacity) {
+			elapsed_capacity += std::chrono::duration_cast<std::chrono::microseconds>(
+				std::chrono::high_resolution_clock::now() - start_capacity).count();
+			timed_capacity = false;
 		}
 	}
 
@@ -53,5 +75,7 @@ int main(int argc, char** argv) {
 	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
         elapsed).count();
 	std::cout << cache_perc <<"%\t"<< microseconds << "\t" << cache_misses<< std::endl;
+	std::cout << "capacity misses: " << miss_capacity << "\tnon-cold access: " << non_cold_acess 
+		<< "\tnon-cold time total: " << elapsed_capacity << std::endl;
 	
 }
