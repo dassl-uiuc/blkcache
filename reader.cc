@@ -6,8 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <chrono>
+#include <random>
+
 #include "cache.hpp"
 #include "fifo_cache_policy.hpp"
+#include "zipfian_distribution.h"
 
 #define BLKSZ 4096
 
@@ -38,10 +41,16 @@ int main(int argc, char** argv) {
 	uint64_t i = 0;
 	uint64_t cache_misses = 0;
 	static char buf[BLKSZ] __attribute__ ((__aligned__ (BLKSZ)));
+
+    std::default_random_engine generator;
+    generator.seed(0);
+    zipfian_int_distribution<int> zipf(0, num_blks - 1, 0.9);
+
+    auto zipf_rand = [&]() { return zipf(generator); };
 	srand(0);
 	while(i++ < num_ops)
 	{
-		uint64_t blk_read = rand()%num_blks;
+		uint64_t blk_read = zipf_rand()%num_blks;
 		if (accessed_blocks.find(blk_read) == accessed_blocks.end()) {
 			accessed_blocks.insert(blk_read);
 		} else {
