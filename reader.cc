@@ -1,21 +1,56 @@
+#include <stdlib.h>
 #include <iostream>
-#include <vector>
-#include <assert.h>
+#include <netinet/in.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <cassert>
+#include <thread>
+#include <mutex>
 #include <chrono>
 #include <random>
 
+#include "user_circular_buffer.h"
 #include "cache.hpp"
 #include "fifo_cache_policy.hpp"
 #include "zipfian_distribution.h"
 
 #define BLKSZ 4096
-
+#define BUFFER_SIZE 1048576
+#define DEMOTE_CHRDEV "/dev/disag_blk-demote0"
 template <typename Key, typename Value>
 using fifo_cache_t = typename caches::fixed_sized_cache<Key, Value, caches::FIFOCachePolicy>;
+
+
+struct circular_buffer* init_queue(const char *device) {
+    int fd = open(device, O_RDWR);
+    if (fd < 0) {
+        std::cerr << "[client]: failed to open device " << device << " , errno: " << strerror(fd) << std::endl;
+        return NULL;
+    }
+
+    void *shmem = mmap(NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (shmem == MAP_FAILED) {
+        std::cerr << "[client]: failed to map memory for device " << device << std::endl;
+        close(fd);
+        return NULL;
+    }
+
+    // can close fd at this point
+    close(fd);
+    return reinterpret_cast<struct circular_buffer *> (shmem);
+}
+
+struct circular_buffer *demote_channel = NULL;
+rdma_request_long_t *request = NULL;
+
+void on_evict(const uint64_t key, const std::string value) {
+	memcpy(request->data, value.c_str(), sizeof(request->data));
+	request->metadata.sector_id = key;
+	push(demote_channel, request);
+}
 
 int main(int argc, char** argv) {
 	int cache_perc = atoi(argv[1]);
@@ -24,11 +59,18 @@ int main(int argc, char** argv) {
 	int fd = open(file_name.c_str(), O_RDWR | O_DIRECT);
 	assert(fd);
 
-	uint64_t num_ops = 10 * num_blks;	
+	// init demote queue
+	demote_channel = init_queue(DEMOTE_CHRDEV);
+	if (demote_channel == NULL) {
+		return EXIT_FAILURE;
+	}
+	request = new rdma_request_long_t;
+
+	uint64_t num_ops = 50 * num_blks;
 	float cp = num_blks * (cache_perc/100.0);
 	uint64_t cache_size = (uint64_t) cp;
-	std::cout << "Cache size:"<<  cache_perc <<"%; Absolute size:" << cache_size << std::endl;
-	auto cache = cache_size != 0 ? new fifo_cache_t<uint64_t, std::string>(cache_size): NULL;
+	std::cout << "Cache size:"<<  cache_perc << "%; Absolute size:" << cache_size << std::endl;
+	auto cache = cache_size != 0 ? new fifo_cache_t<uint64_t, std::string>(cache_size, on_evict) : NULL;
 	auto start = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> start_capacity;
 	std::unordered_set<uint64_t> accessed_blocks;
@@ -44,7 +86,7 @@ int main(int argc, char** argv) {
 
     std::default_random_engine generator;
     generator.seed(0);
-    zipfian_int_distribution<int> zipf(0, num_blks - 1, 0.9);
+    zipfian_int_distribution<int> zipf(0, num_blks - 1, 0.5);
 
     auto zipf_rand = [&]() { return zipf(generator); };
 	srand(0);
@@ -63,7 +105,10 @@ int main(int argc, char** argv) {
 			auto ret = cache->Get(blk_read);		
 		} else {
 			assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
-			if (cache)
+			// std::string s(buf);
+			// std::cout << "blk_read: " << blk_read << ", string: " << s << std::endl;
+			// assert(stoi(s) == blk_read);
+			if (cache) 
 			{
 				std::string contents(buf, BLKSZ);
 				cache->Put(blk_read, contents);
@@ -87,4 +132,6 @@ int main(int argc, char** argv) {
 	std::cout << "capacity misses: " << miss_capacity << "\tnon-cold access: " << non_cold_access 
 		<< "\tnon-cold time total: " << elapsed_capacity << std::endl;
 	
+	delete request;
+	return EXIT_SUCCESS;
 }

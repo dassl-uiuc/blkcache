@@ -14,7 +14,7 @@
 int main() {
     std::default_random_engine generator;
     generator.seed(0);
-    zipfian_int_distribution<int> zipf(0, 10000, 0.9);
+    zipfian_int_distribution<int> zipf(0, 10000, 0.5);
 
     auto zipf_rand = [&]() { return zipf(generator); };
 

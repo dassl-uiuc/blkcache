@@ -34,6 +34,7 @@ class fixed_sized_cache
     using const_iterator = typename HashMap::const_iterator;
     using operation_guard = typename std::lock_guard<std::mutex>;
     using on_erase_cb = typename std::function<void(const Key &key, const Value &value)>;
+    using on_evict_cb = typename std::function<void(const Key &key, const Value &value)>;
 
     /**
      * \brief Fixed sized cache constructor
@@ -41,11 +42,12 @@ class fixed_sized_cache
      * \param[in] max_size Maximum size of the cache
      * \param[in] policy Cache policy to use
      * \param[in] on_erase on_erase_cb function to be called when cache's element get erased
+     * \param[in] on_evict on_evict_cb function to be called when evictions occur
      */
     explicit fixed_sized_cache(
-        size_t max_size, const Policy<Key> policy = Policy<Key>{},
+        size_t max_size, on_evict_cb on_evict = [](const Key &, const Value &) {}, const Policy<Key> policy = Policy<Key>{},
         on_erase_cb on_erase = [](const Key &, const Value &) {})
-        : cache_policy{policy}, max_cache_size{max_size}, on_erase_callback{on_erase}
+        : cache_policy{policy}, max_cache_size{max_size}, on_erase_callback{on_erase}, on_evict_callback{on_evict}
     {
         if (max_cache_size == 0)
         {
@@ -74,7 +76,9 @@ class fixed_sized_cache
             if (cache_items_map.size() + 1 > max_cache_size)
             {
                 auto disp_candidate_key = cache_policy.ReplCandidate();
-
+                auto disp_candidate_value = Get(disp_candidate_key);
+                
+                on_evict_callback(disp_candidate_key, disp_candidate_value);
                 Erase(disp_candidate_key);
             }
 
@@ -240,6 +244,7 @@ class fixed_sized_cache
     mutable std::mutex safe_op;
     std::size_t max_cache_size;
     on_erase_cb on_erase_callback;
+    on_evict_cb on_evict_callback;
 };
 } // namespace caches
 
