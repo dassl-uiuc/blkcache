@@ -23,6 +23,7 @@
 template <typename Key, typename Value>
 using fifo_cache_t = typename caches::fixed_sized_cache<Key, Value, caches::FIFOCachePolicy>;
 
+uint64_t demote_failure = 0;
 
 struct circular_buffer* init_queue(const char *device) {
     int fd = open(device, O_RDWR);
@@ -49,7 +50,7 @@ rdma_request_long_t *request = NULL;
 void on_evict(const uint64_t key, const std::string value) {
 	memcpy(request->data, value.c_str(), sizeof(request->data));
 	request->metadata.sector_id = key;
-	push(demote_channel, request);
+	if (!push(demote_channel, request)) demote_failure += 1;
 }
 
 int main(int argc, char** argv) {
@@ -69,9 +70,7 @@ int main(int argc, char** argv) {
 	uint64_t num_ops = 50 * num_blks;
 	float cp = num_blks * (cache_perc/100.0);
 	uint64_t cache_size = (uint64_t) cp;
-	std::cout << "Cache size:"<<  cache_perc << "%; Absolute size:" << cache_size << std::endl;
 	auto cache = cache_size != 0 ? new fifo_cache_t<uint64_t, std::string>(cache_size, on_evict) : NULL;
-	auto start = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> start_capacity;
 	std::unordered_set<uint64_t> accessed_blocks;
 
@@ -90,6 +89,9 @@ int main(int argc, char** argv) {
 
     auto zipf_rand = [&]() { return zipf(generator); };
 	srand(0);
+	
+	
+	auto start = std::chrono::high_resolution_clock::now();
 	while(i++ < num_ops)
 	{
 		uint64_t blk_read = zipf_rand()%num_blks;
@@ -101,7 +103,7 @@ int main(int argc, char** argv) {
 			timed_capacity = true;
 			non_cold_access++;
 		}
-		if(cache && cache->Cached(blk_read)) {
+		if (cache && cache->Cached(blk_read)) {
 			auto ret = cache->Get(blk_read);		
 		} else {
 			assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
@@ -126,11 +128,16 @@ int main(int argc, char** argv) {
 
 	auto elapsed = std::chrono::high_resolution_clock::now() - start;
 
-	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
-        elapsed).count();
-	std::cout << cache_perc <<"%\t"<< microseconds << "\t" << cache_misses<< std::endl;
-	std::cout << "capacity misses: " << miss_capacity << "\tnon-cold access: " << non_cold_access 
-		<< "\tnon-cold time total: " << elapsed_capacity << std::endl;
+	long long total_time = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+
+	std::cout << "run statistics: " << std::endl
+			<< "\tcache percentage: " << cache_perc << "%" << std::endl
+			<< "\ttotal time taken: " << total_time << " us" << std::endl
+			<< "\ttotal misses: " << cache_misses << std::endl
+			<< "\tcapacity misses: " << miss_capacity << std::endl
+			<< "\tnon-cold access: " << non_cold_access << std::endl
+			<< "\tnon-cold time total: " << elapsed_capacity << " us" << std::endl
+			<< "\tdemote failures: " << demote_failure << std::endl;
 	
 	delete request;
 	return EXIT_SUCCESS;
