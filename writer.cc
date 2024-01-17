@@ -7,13 +7,14 @@
 #include <string.h>
 #include <chrono>
 
-int main(int argc, char** argv) {
-	char* buf;
+int main(int argc, char **argv)
+{
+	char *buf;
 	int numblks = atoi(argv[1]);
 	std::string file_name(argv[2]);
 	int fd = open(file_name.c_str(), O_RDWR | O_CREAT, S_IRWXU);
 	assert(fd);
-	buf = (char*) malloc(numblks * 4096);
+	buf = (char *)malloc(numblks * 4096);
 	for (int i = 0; i < numblks; i++) {
 		sprintf(&buf[i * 4096], "%d", i);
 	}
@@ -23,7 +24,6 @@ int main(int argc, char** argv) {
 	fsync(fd);
 	auto elapsed = std::chrono::high_resolution_clock::now() - start;
 
-	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
-        elapsed).count();
-	std::cout << "Writing "<< numblks << " blks took " << microseconds/1000.0 << " ms" << std::endl;
+	long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+	std::cout << "Writing " << numblks << " blks took " << microseconds / 1000.0 << " ms" << std::endl;
 }

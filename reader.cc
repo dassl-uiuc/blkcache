@@ -25,35 +25,39 @@ using fifo_cache_t = typename caches::fixed_sized_cache<Key, Value, caches::FIFO
 
 uint64_t demote_failure = 0;
 
-struct circular_buffer* init_queue(const char *device) {
-    int fd = open(device, O_RDWR);
-    if (fd < 0) {
-        std::cerr << "[client]: failed to open device " << device << " , errno: " << strerror(fd) << std::endl;
-        return NULL;
-    }
+struct circular_buffer *init_queue(const char *device)
+{
+	int fd = open(device, O_RDWR);
+	if (fd < 0) {
+		std::cerr << "[client]: failed to open device " << device << " , errno: " << strerror(fd) << std::endl;
+		return NULL;
+	}
 
-    void *shmem = mmap(NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (shmem == MAP_FAILED) {
-        std::cerr << "[client]: failed to map memory for device " << device << std::endl;
-        close(fd);
-        return NULL;
-    }
+	void *shmem = mmap(NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (shmem == MAP_FAILED) {
+		std::cerr << "[client]: failed to map memory for device " << device << std::endl;
+		close(fd);
+		return NULL;
+	}
 
-    // can close fd at this point
-    close(fd);
-    return reinterpret_cast<struct circular_buffer *> (shmem);
+	// can close fd at this point
+	close(fd);
+	return reinterpret_cast<struct circular_buffer *>(shmem);
 }
 
 struct circular_buffer *demote_channel = NULL;
 rdma_request_long_t *request = NULL;
 
-void on_evict(const uint64_t key, const std::string value) {
+void on_evict(const uint64_t key, const std::string value)
+{
 	memcpy(request->data, value.c_str(), sizeof(request->data));
 	request->metadata.sector_id = key;
-	if (!push(demote_channel, request)) demote_failure += 1;
+	if (!push(demote_channel, request))
+		demote_failure += 1;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
 	int cache_perc = atoi(argv[1]);
 	int num_blks = atoi(argv[2]);
 	std::string file_name(argv[3]);
@@ -68,8 +72,8 @@ int main(int argc, char** argv) {
 	request = new rdma_request_long_t;
 
 	uint64_t num_ops = 50 * num_blks;
-	float cp = num_blks * (cache_perc/100.0);
-	uint64_t cache_size = (uint64_t) cp;
+	float cp = num_blks * (cache_perc / 100.0);
+	uint64_t cache_size = (uint64_t)cp;
 	auto cache = cache_size != 0 ? new fifo_cache_t<uint64_t, std::string>(cache_size, on_evict) : NULL;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start_capacity;
 	std::unordered_set<uint64_t> accessed_blocks;
@@ -81,20 +85,18 @@ int main(int argc, char** argv) {
 
 	uint64_t i = 0;
 	uint64_t cache_misses = 0;
-	static char buf[BLKSZ] __attribute__ ((__aligned__ (BLKSZ)));
+	static char buf[BLKSZ] __attribute__((__aligned__(BLKSZ)));
 
-    std::default_random_engine generator;
-    generator.seed(0);
-    zipfian_int_distribution<int> zipf(0, num_blks - 1, 0.5);
+	std::default_random_engine generator;
+	generator.seed(0);
+	zipfian_int_distribution<int> zipf(0, num_blks - 1, 0.5);
 
-    auto zipf_rand = [&]() { return zipf(generator); };
+	auto zipf_rand = [&]() { return zipf(generator); };
 	srand(0);
-	
-	
+
 	auto start = std::chrono::high_resolution_clock::now();
-	while(i++ < num_ops)
-	{
-		uint64_t blk_read = zipf_rand()%num_blks;
+	while (i++ < num_ops) {
+		uint64_t blk_read = zipf_rand() % num_blks;
 		if (accessed_blocks.find(blk_read) == accessed_blocks.end()) {
 			accessed_blocks.insert(blk_read);
 		} else {
@@ -104,14 +106,13 @@ int main(int argc, char** argv) {
 			non_cold_access++;
 		}
 		if (cache && cache->Cached(blk_read)) {
-			auto ret = cache->Get(blk_read);		
+			auto ret = cache->Get(blk_read);
 		} else {
 			assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
 			// std::string s(buf);
 			// std::cout << "blk_read: " << blk_read << ", string: " << s << std::endl;
 			// assert(stoi(s) == blk_read);
-			if (cache) 
-			{
+			if (cache) {
 				std::string contents(buf, BLKSZ);
 				cache->Put(blk_read, contents);
 			}
@@ -121,7 +122,8 @@ int main(int argc, char** argv) {
 		}
 		if (timed_capacity) {
 			elapsed_capacity += std::chrono::duration_cast<std::chrono::microseconds>(
-				std::chrono::high_resolution_clock::now() - start_capacity).count();
+						    std::chrono::high_resolution_clock::now() - start_capacity)
+						    .count();
 			timed_capacity = false;
 		}
 	}
@@ -131,14 +133,14 @@ int main(int argc, char** argv) {
 	long long total_time = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
 
 	std::cout << "run statistics: " << std::endl
-			<< "\tcache percentage: " << cache_perc << "%" << std::endl
-			<< "\ttotal time taken: " << total_time << " us" << std::endl
-			<< "\ttotal misses: " << cache_misses << std::endl
-			<< "\tcapacity misses: " << miss_capacity << std::endl
-			<< "\tnon-cold access: " << non_cold_access << std::endl
-			<< "\tnon-cold time total: " << elapsed_capacity << " us" << std::endl
-			<< "\tdemote failures: " << demote_failure << std::endl;
-	
+		  << "\tcache percentage: " << cache_perc << "%" << std::endl
+		  << "\ttotal time taken: " << total_time << " us" << std::endl
+		  << "\ttotal misses: " << cache_misses << std::endl
+		  << "\tcapacity misses: " << miss_capacity << std::endl
+		  << "\tnon-cold access: " << non_cold_access << std::endl
+		  << "\tnon-cold time total: " << elapsed_capacity << " us" << std::endl
+		  << "\tdemote failures: " << demote_failure << std::endl;
+
 	delete request;
 	return EXIT_SUCCESS;
 }
