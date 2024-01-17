@@ -31,43 +31,41 @@ namespace caches
  * An so on, the next candidate will be `B`, then `C`, etc.
  * \tparam Key Type of a key a policy works with
  */
-template <typename Key>
-class FIFOCachePolicy : public ICachePolicy<Key>
-{
-  public:
-    using fifo_iterator = typename std::list<Key>::const_iterator;
+template <typename Key> class FIFOCachePolicy : public ICachePolicy<Key> {
+    public:
+	using fifo_iterator = typename std::list<Key>::const_iterator;
 
-    FIFOCachePolicy() = default;
-    ~FIFOCachePolicy() = default;
+	FIFOCachePolicy() = default;
+	~FIFOCachePolicy() = default;
 
-    void Insert(const Key &key) override
-    {
-        fifo_queue.emplace_front(key);
-        key_lookup[key] = fifo_queue.begin();
-    }
-    // handle request to the key-element in a cache
-    void Touch(const Key &key) noexcept override
-    {
-        // nothing to do here in the FIFO strategy
-        (void)key;
-    }
-    // handle element deletion from a cache
-    void Erase(const Key &key) noexcept override
-    {
-        auto element = key_lookup[key];
-        fifo_queue.erase(element);
-        key_lookup.erase(key);
-    }
+	void Insert(const Key &key) override
+	{
+		fifo_queue.emplace_front(key);
+		key_lookup[key] = fifo_queue.begin();
+	}
+	// handle request to the key-element in a cache
+	void Touch(const Key &key) noexcept override
+	{
+		// nothing to do here in the FIFO strategy
+		(void)key;
+	}
+	// handle element deletion from a cache
+	void Erase(const Key &key) noexcept override
+	{
+		auto element = key_lookup[key];
+		fifo_queue.erase(element);
+		key_lookup.erase(key);
+	}
 
-    // return a key of a replacement candidate
-    const Key &ReplCandidate() const noexcept override
-    {
-        return fifo_queue.back();
-    }
+	// return a key of a replacement candidate
+	const Key &ReplCandidate() const noexcept override
+	{
+		return fifo_queue.back();
+	}
 
-  private:
-    std::list<Key> fifo_queue;
-    std::unordered_map<Key, fifo_iterator> key_lookup;
+    private:
+	std::list<Key> fifo_queue;
+	std::unordered_map<Key, fifo_iterator> key_lookup;
 };
 } // namespace caches
 
