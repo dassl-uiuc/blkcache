@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.14)
+
+project(infinity)
+set(CMAKE_CXX_STANDARD 17)
+set(RDMA_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+message("${RDMA_SOURCE_DIR}")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DINFINITY_ASSERT_ON")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DINFINITY_DEBUG_ON")
+
+find_package(Threads REQUIRED)
+
+add_subdirectory(src)

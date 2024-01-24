@@ -188,6 +188,8 @@ add_library(block_cache ${BLOCK_CACHE_LIBRARY_BUILD}
             block_cache.cpp
             block_cache.h)
 
+add_subdirectory(RDMA)
+
 target_include_directories(block_cache PUBLIC
     .
 
@@ -198,6 +200,7 @@ target_include_directories(block_cache PUBLIC
     ${magic_enum_SOURCE_DIR}/include
     ${tl_expected_SOURCE_DIR}/include/tl
 
+    RDMA/src/
 )
 
 target_link_libraries(block_cache PUBLIC
