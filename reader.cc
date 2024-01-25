@@ -63,9 +63,9 @@ int main(int argc, char **argv)
 			auto ret = cache->Get(blk_read);
 		} else {
 			assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
-			// std::string s(buf);
+			std::string s(buf);
 			// std::cout << "blk_read: " << blk_read << ", string: " << s << std::endl;
-			// assert(stoi(s) == blk_read);
+			assert(stoi(s) == blk_read);
 			if (cache) {
 				std::string contents(buf, BLKSZ);
 				cache->Put(blk_read, contents);

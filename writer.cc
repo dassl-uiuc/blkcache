@@ -15,7 +15,9 @@ int main(int argc, char **argv)
 	int fd = open(file_name.c_str(), O_RDWR | O_CREAT, S_IRWXU);
 	assert(fd);
 	buf = (char *)malloc(numblks * 4096);
-	memset(buf, 'a', numblks * 4096);
+	for (int i = 0; i < numblks; i++) {
+		sprintf(&buf[i * 4096], "%d", i);
+	}
 	auto start = std::chrono::high_resolution_clock::now();
 	write(fd, buf, numblks * 4096);
 	fsync(fd);
