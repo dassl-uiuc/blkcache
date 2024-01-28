@@ -10,6 +10,9 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <linux/fs.h>
 #include <random>
 
 #include "user_circular_buffer.h"
@@ -20,10 +23,14 @@
 #define BLKSZ 4096
 #define BUFFER_SIZE 1048576
 #define DEMOTE_CHRDEV "/dev/disag_blk-demote0"
+#define WITH_IOCTL_FIBMAP
+
 template <typename Key, typename Value>
 using fifo_cache_t = typename caches::fixed_sized_cache<Key, Value, caches::FIFOCachePolicy>;
 
 uint64_t demote_failure = 0;
+int g_fd;
+uint64_t ioctl_time = 0;
 
 struct circular_buffer *init_queue(const char *device)
 {
@@ -50,7 +57,12 @@ rdma_request_long_t *request = NULL;
 
 void on_evict(const uint64_t key, const std::string value)
 {
+	int ret;
 	memcpy(request->data, value.c_str(), sizeof(request->data));
+	auto start_time = std::chrono::high_resolution_clock::now();
+	ret = ioctl(g_fd, FIBMAP, &key);
+	auto end_time = std::chrono::high_resolution_clock::now();
+	ioctl_time += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 	request->metadata.sector_id = key;
 	if (!push(demote_channel, request))
 		demote_failure += 1;
@@ -63,6 +75,7 @@ int main(int argc, char **argv)
 	std::string file_name(argv[3]);
 	int fd = open(file_name.c_str(), O_RDWR | O_DIRECT);
 	assert(fd);
+	g_fd = fd;
 
 	// init demote queue
 	demote_channel = init_queue(DEMOTE_CHRDEV);
@@ -133,13 +146,14 @@ int main(int argc, char **argv)
 	long long total_time = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
 
 	std::cout << "run statistics: " << std::endl
-		  << "\tcache percentage: " << cache_perc << "%" << std::endl
-		  << "\ttotal time taken: " << total_time << " us" << std::endl
+		  << "\tcache percentage: " << cache_perc << std::endl
+		  << "\ttotal time taken in us: " << total_time << std::endl
 		  << "\ttotal misses: " << cache_misses << std::endl
 		  << "\tcapacity misses: " << miss_capacity << std::endl
 		  << "\tnon-cold access: " << non_cold_access << std::endl
 		  << "\tnon-cold time total: " << elapsed_capacity << " us" << std::endl
-		  << "\tdemote failures: " << demote_failure << std::endl;
+		  << "\tdemote failures: " << demote_failure << std::endl
+		  << "\tioctl time in us: " << ioctl_time << std::endl;
 
 	delete request;
 	return EXIT_SUCCESS;
