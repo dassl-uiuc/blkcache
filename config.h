@@ -33,10 +33,22 @@ struct SplitCacheConfig {
   std::string nonowning_cache_type;
 };
 
+struct RdmaConfig {
+  int context_index;
+};
+
 struct CacheConfig {
   LRUConfig lru;
   RandomCacheConfig random;
   SplitCacheConfig split;
+  bool paged;
+  RdmaConfig rdma;
+};
+
+struct RemoteMachineConfig {
+  uint64_t index;
+  std::string ip;
+  uint64_t port;
 };
 
 struct BlockCacheConfig {
@@ -45,6 +57,7 @@ struct BlockCacheConfig {
   std::string db_type;
   DBConfig db;
   CacheConfig cache;
+  std::vector<RemoteMachineConfig> remote_machine_configs;
 };
 
 inline void from_json(const json &j, BlockDBConfig &block_db) {
@@ -73,10 +86,22 @@ inline void from_json(const json &j, SplitCacheConfig &split) {
   j.at("nonowning_cache_type").get_to(split.nonowning_cache_type);
 }
 
+inline void from_json(const json &j, RdmaConfig &rdma) {
+  j.at("context_index").get_to(rdma.context_index);
+}
+
 inline void from_json(const json &j, CacheConfig &cc) {
   j.at("lru").get_to(cc.lru);
   j.at("random").get_to(cc.random);
   j.at("split").get_to(cc.split);
+  j.at("paged").get_to(cc.paged);
+  j.at("rdma").get_to(cc.rdma);
+}
+
+inline void from_json(const json &j, RemoteMachineConfig &rmc) {
+  j.at("index").get_to(rmc.index);
+  j.at("ip").get_to(rmc.ip);
+  j.at("port").get_to(rmc.port);
 }
 
 inline void from_json(const json &j, BlockCacheConfig &bcc) {
@@ -85,4 +110,5 @@ inline void from_json(const json &j, BlockCacheConfig &bcc) {
   j.at("db_type").get_to(bcc.db_type);
   j.at("db").get_to(bcc.db);
   j.at("cache").get_to(bcc.cache);
+  j.at("remote_machines").get_to(bcc.remote_machine_configs);
 }

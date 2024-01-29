@@ -9,7 +9,10 @@
 template <typename KeyType, typename ValueType>
 class LRUCache : public CachePolicy<KeyType, ValueType> {
 public:
-  LRUCache(uint64_t cache_size) : CachePolicy<KeyType, ValueType>(cache_size) {}
+  LRUCache(BlockCacheConfig block_cache_config, std::shared_ptr<BlockDB> block_db, uint64_t cache_size) :
+    CachePolicy<KeyType, ValueType>(block_cache_config, block_db, cache_size)
+  {
+  }
 
   void put(const KeyType &key, const ValueType &val, bool owning = false) override {
     auto it = item_map.find(key);
@@ -50,6 +53,9 @@ private:
   };
 
 private:
+  // paged
+  // std::vector<
+
   std::list<std::pair<KeyType, ValueType>> item_list;
   std::unordered_map<KeyType, decltype(item_list.begin())> item_map;
 };

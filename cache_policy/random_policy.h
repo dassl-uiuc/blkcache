@@ -10,8 +10,8 @@
 template <typename KeyType, typename ValueType>
 class RandomCache : public CachePolicy<KeyType, ValueType> {
 public:
-  RandomCache(uint64_t cache_size)
-      : CachePolicy<KeyType, ValueType>(cache_size) {
+  RandomCache(BlockCacheConfig block_cache_config, std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
+      : CachePolicy<KeyType, ValueType>(block_cache_config, block_db, cache_size) {
     distribution = std::uniform_int_distribution<int>(0, cache_size - 1);
   }
 

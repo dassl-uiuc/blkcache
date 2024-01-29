@@ -27,7 +27,7 @@
 
 #define PORT_NUMBER 8011
 #define PORT_NUMBER2 8012
-#define SERVER_IP "192.168.6.1"
+#define SERVER_IP "10.10.1.2"
 #define SERVER2_IP "192.168.6.3"
 
 #define MSG_SIZE 64
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     --argc;
   }
 
-  infinity::core::Context *context = new infinity::core::Context();
+  infinity::core::Context *context = new infinity::core::Context(3);
   infinity::queues::QueuePairFactory *qpFactory = new  infinity::queues::QueuePairFactory(context);
   infinity::queues::QueuePair *qp;
   infinity::queues::QueuePair *qp2;
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 
     auto rdma_server = [] (int port) {
 
-      infinity::core::Context *context = new infinity::core::Context();
+      infinity::core::Context *context = new infinity::core::Context(3);
       infinity::queues::QueuePairFactory *qpFactory = new  infinity::queues::QueuePairFactory(context);
 
       printf("Creating buffers to read from and write to\n");
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     auto rdma_write = [](uint32_t id, uint16_t port) {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
-      infinity::core::Context *context = new infinity::core::Context();
+      infinity::core::Context *context = new infinity::core::Context(3);
       infinity::queues::QueuePairFactory *qpFactory = new  infinity::queues::QueuePairFactory(context);
 
       printf("Connecting to remote node\n");

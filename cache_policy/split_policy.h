@@ -7,8 +7,8 @@
 template <typename KeyType, typename ValueType>
 class SplitCache : public CachePolicy<KeyType, ValueType> {
 public:
-  SplitCache(uint64_t cache_size, std::unique_ptr<CachePolicy<KeyType, ValueType>> owning_cache_, std::unique_ptr<CachePolicy<KeyType, ValueType>> nonowning_cache_)
-      : CachePolicy<KeyType, ValueType>(cache_size), owning_cache(std::move(owning_cache_)), nonowning_cache(std::move(nonowning_cache_)) {
+  SplitCache(BlockCacheConfig block_cache_config, std::shared_ptr<BlockDB> block_db, uint64_t cache_size, std::unique_ptr<CachePolicy<KeyType, ValueType>> owning_cache_, std::unique_ptr<CachePolicy<KeyType, ValueType>> nonowning_cache_)
+      : CachePolicy<KeyType, ValueType>(block_cache_config, block_db, cache_size), owning_cache(std::move(owning_cache_)), nonowning_cache(std::move(nonowning_cache_)) {
   }
 
   void put(const KeyType &key, const ValueType &val, bool owning = true) override {

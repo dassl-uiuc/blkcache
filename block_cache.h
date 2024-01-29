@@ -28,18 +28,18 @@ public:
   explicit BlockCache(BlockCacheConfig block_cache_config_)
       : block_cache_config(std::move(block_cache_config_)) {
     if (block_cache_config.db_type == "block_db") {
-      db = std::make_unique<BlockDB>();
+      db = std::make_shared<BlockDB>();
       db->init(block_cache_config);
     } else {
       panic("Block db type '{}' is not supported", block_cache_config.db_type);
     }
 
-    auto make_lru_cache = [](const auto& cache_size) {
-      return std::make_unique<LRUCache<K, V>>(cache_size);
+    auto make_lru_cache = [&](const auto& cache_size) {
+      return std::make_unique<LRUCache<K, V>>(block_cache_config, db, cache_size);
     };
 
-    auto make_random_cache = [](const auto& cache_size) {
-      return std::make_unique<RandomCache<K, V>>(cache_size);
+    auto make_random_cache = [&](const auto& cache_size) {
+      return std::make_unique<RandomCache<K, V>>(block_cache_config, db, cache_size);
     };
 
     if (block_cache_config.policy_type == "lru") {
@@ -73,7 +73,7 @@ public:
       }
 
       cache = std::make_unique<SplitCache<K, V>>(
-          block_cache_config.cache.split.cache_size, std::move(owning_cache), std::move(nonowning_cache));
+          block_cache_config, db, block_cache_config.cache.split.cache_size, std::move(owning_cache), std::move(nonowning_cache));
     } else {
       panic("Block policy type '{}' is not supported",
             block_cache_config.policy_type);
@@ -161,7 +161,7 @@ public:
 
 private:
   BlockCacheConfig block_cache_config;
-  std::unique_ptr<DB> db = nullptr;
+  std::shared_ptr<BlockDB> db = nullptr;
   std::unique_ptr<DefaultCachePolicy> cache = nullptr;
 
   uint64_t writes = 0;

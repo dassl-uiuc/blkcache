@@ -22,6 +22,27 @@
             "nonowning_ratio": 0.25,
             "owning_cache_type": "lru",
             "nonowning_cache_type": "lru"
+        },
+        "paged": true,
+        "rdma": {
+            "context_index": 3
         }
-    }
+    },
+    "remote_machines": [
+        {
+            "index": 0,
+            "ip": "10.10.1.1",
+            "port": 8000
+        },
+        {
+            "index": 1,
+            "ip": "10.10.1.2",
+            "port": 8000
+        },
+        {
+            "index": 2,
+            "ip": "10.10.1.3",
+            "port": 8000
+        }
+    ]
 }

@@ -21,7 +21,6 @@ public:
 
     fd = open(block_cache_config.db.block_db.filename.c_str(),
               O_CREAT | O_RDWR | O_TRUNC | O_DIRECT, S_IRWXU);
-    // | O_SYNC
     if (fd == -1) {
       perror("open");
       exit(EXIT_FAILURE);
@@ -74,6 +73,15 @@ public:
       auto index = std::hash<std::string>{}(s);
       return index % num_entries;
     }
+  }
+
+  uint8_t* get_pointer_to_data_block(std::string &key) override {
+    const auto& block_size = block_cache_config.db.block_db.block_size;
+
+    auto index = hash_index(key);
+    auto offset = index * block_size;
+
+    return reinterpret_cast<uint8_t*>(offset);
   }
 
   DBError put(const std::string &key, const std::string &value) override {

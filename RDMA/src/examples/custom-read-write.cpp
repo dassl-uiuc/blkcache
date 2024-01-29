@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <cassert>
 #include <chrono>
+#include <thread>
 
 #include <infinity/core/Configuration.h>
 #include <infinity/core/Context.h>
@@ -67,11 +68,36 @@ int main(int argc, char **argv) {
 
     printf("Setting up connection (blocking)\n");
     qpFactory->bindToPort(PORT_NUMBER);
-    qp = qpFactory->acceptIncomingConnection(bufferToken, sizeof(infinity::memory::RegionToken));
+    auto counter = 0;
+    auto worker = [&]()
+    {
+      qp = qpFactory->acceptIncomingConnection(bufferToken, sizeof(infinity::memory::RegionToken));
 
-    printf("Waiting for message (blocking)\n");
-    infinity::core::receive_element_t receiveElement;
-    while(!context->receive(&receiveElement));
+      printf("Waiting for message (blocking)\n");
+      infinity::core::receive_element_t receiveElement;
+      while(!context->receive(&receiveElement))
+      {
+        uint8_t* buf = (uint8_t*)bufferToReadWrite->getData();
+        std::string ss(std::to_string(counter));
+        memcpy(buf, ss.c_str(), ss.length());
+        std::cout << "ADASD " << ss << std::endl;
+      }
+    };
+
+    int n = 4;
+    std::thread mythreads[n];
+    for (int i = 0; i < n; i++) {
+      mythreads[i] = std::thread(worker);
+    }
+
+    for (auto i = 0; i < 10000000000000; i++)
+    {
+      counter++;
+    }
+
+    for (int i = 0; i < n; i++) {
+      mythreads[i].join();
+    }
 
     printf("Message received\n");
     delete bufferToReadWrite;
@@ -101,25 +127,29 @@ int main(int argc, char **argv) {
 
      infinity::memory::Buffer *buffer2Sided = new infinity::memory::Buffer(context, 128 * sizeof(char));
 
-    // Separate buffer for read.
-    infinity::memory::Buffer *bufferRead = new infinity::memory::Buffer(context, 64 * sizeof(char));
-    printf("Reading content from remote buffer\n");
     infinity::requests::RequestToken requestToken(context);
-    qp->read(bufferRead, remoteBufferToken, &requestToken);
+    qp->write(buffer1Sided, 0, remoteBufferToken, 64, 64, &requestToken);
     requestToken.waitUntilCompleted();
-    std::cout << (char*)bufferRead->getData() << "----- " <<  std::endl;
+
+    // // Separate buffer for read.
+    infinity::memory::Buffer *bufferRead = new infinity::memory::Buffer(context, 64 * sizeof(char));
+    // printf("Reading content from remote buffer\n");
+    // infinity::requests::RequestToken requestToken(context);
+    // qp->read(bufferRead, remoteBufferToken, &requestToken);
+    // requestToken.waitUntilCompleted();
+    // std::cout << (char*)bufferRead->getData() << "----- " <<  std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 1024 * 1024; i++) {
-      // printf("Writing content to remote buffer\n");
-      if (i % 2 == 1) {
-        qp->write(buffer1Sided, 0, remoteBufferToken, 64 * i, 64, &requestToken);
-      }
-      else {
-        qp->write(buffer1Sided2, 0, remoteBufferToken, 64 * i, 64, &requestToken);
-      }
-      requestToken.waitUntilCompleted();
-    }
+    // for (int i = 0; i < 1024 * 1024; i++) {
+    //   // printf("Writing content to remote buffer\n");
+    //   if (i % 2 == 1) {
+    //     qp->write(buffer1Sided, 0, remoteBufferToken, 64 * i, 64, &requestToken);
+    //   }
+    //   else {
+    //     qp->write(buffer1Sided2, 0, remoteBufferToken, 64 * i, 64, &requestToken);
+    //   }
+    //   requestToken.waitUntilCompleted();
+    // }
     auto elapsed = std::chrono::high_resolution_clock::now() - start;
     long long microseconds = std::chrono::duration_cast<std::chrono::microseconds> (elapsed).count();
     printf("Microseconds are %lld", microseconds);
@@ -128,7 +158,8 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < 1024 * 1024; i++) {
     // printf("Writing content to remote buffer\n");
-      qp->read(buffer1Sided, 0, remoteBufferToken, 64 * i, 64, &requestToken);
+      qp->read(buffer1Sided, remoteBufferToken, &requestToken);
+      // qp->read(buffer1Sided, 0, remoteBufferToken, 64, 64, &requestToken);
       requestToken.waitUntilCompleted();
       std::cout << (char*)buffer1Sided->getData() << "----- " <<  std::endl;
     }

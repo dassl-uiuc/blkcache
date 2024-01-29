@@ -210,6 +210,10 @@ target_link_libraries(block_cache PUBLIC
     nlohmann_json
     magic_enum
     expected
+
+    infinity
+    ibverbs
+    Threads::Threads    
 )
 
 if (MSVC)
