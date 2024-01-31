@@ -59,11 +59,15 @@ void on_evict(const uint64_t key, const std::string value)
 {
 	int ret;
 	memcpy(request->data, value.c_str(), sizeof(request->data));
+	int k = key;
+#ifdef WITH_IOCTL_FIBMAP
 	auto start_time = std::chrono::high_resolution_clock::now();
-	ret = ioctl(g_fd, FIBMAP, &key);
+	ret = ioctl(g_fd, FIBMAP, &k);
+	assert(ret >= 0);
 	auto end_time = std::chrono::high_resolution_clock::now();
 	ioctl_time += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-	request->metadata.sector_id = key;
+#endif
+	request->metadata.sector_id = k;
 	if (!push(demote_channel, request))
 		demote_failure += 1;
 }
@@ -77,12 +81,14 @@ int main(int argc, char **argv)
 	assert(fd);
 	g_fd = fd;
 
-	// init demote queue
-	demote_channel = init_queue(DEMOTE_CHRDEV);
-	if (demote_channel == NULL) {
-		return EXIT_FAILURE;
+	if (access(DEMOTE_CHRDEV, F_OK) == 0) {
+		// init demote queue
+		demote_channel = init_queue(DEMOTE_CHRDEV);
+		if (demote_channel == NULL) {
+			return EXIT_FAILURE;
+		}
+		request = new rdma_request_long_t;
 	}
-	request = new rdma_request_long_t;
 
 	uint64_t num_ops = 50 * num_blks;
 	float cp = num_blks * (cache_perc / 100.0);
@@ -122,9 +128,9 @@ int main(int argc, char **argv)
 			auto ret = cache->Get(blk_read);
 		} else {
 			assert(pread(fd, buf, BLKSZ, blk_read * BLKSZ) == BLKSZ);
-			// std::string s(buf);
+			std::string s(buf);
 			// std::cout << "blk_read: " << blk_read << ", string: " << s << std::endl;
-			// assert(stoi(s) == blk_read);
+			assert(stoi(s) == blk_read);
 			if (cache) {
 				std::string contents(buf, BLKSZ);
 				cache->Put(blk_read, contents);
