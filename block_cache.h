@@ -34,12 +34,14 @@ public:
       panic("Block db type '{}' is not supported", block_cache_config.db_type);
     }
 
-    auto make_lru_cache = [&](const auto& cache_size) {
-      return std::make_unique<LRUCache<K, V>>(block_cache_config, db, cache_size);
+    auto make_lru_cache = [&](const auto &cache_size) {
+      return std::make_unique<LRUCache<K, V>>(block_cache_config, db,
+                                              cache_size);
     };
 
-    auto make_random_cache = [&](const auto& cache_size) {
-      return std::make_unique<RandomCache<K, V>>(block_cache_config, db, cache_size);
+    auto make_random_cache = [&](const auto &cache_size) {
+      return std::make_unique<RandomCache<K, V>>(block_cache_config, db,
+                                                 cache_size);
     };
 
     if (block_cache_config.policy_type == "lru") {
@@ -47,33 +49,43 @@ public:
     } else if (block_cache_config.policy_type == "random") {
       cache = make_random_cache(block_cache_config.cache.random.cache_size);
     } else if (block_cache_config.policy_type == "split") {
-      if (block_cache_config.cache.split.owning_ratio + block_cache_config.cache.split.nonowning_ratio != 1.0) {
+      if (block_cache_config.cache.split.owning_ratio +
+              block_cache_config.cache.split.nonowning_ratio !=
+          1.0) {
         panic("Read ratio and write ratio must sum to 1.0");
       }
-      
+
       std::unique_ptr<DefaultCachePolicy> owning_cache = nullptr;
       std::unique_ptr<DefaultCachePolicy> nonowning_cache = nullptr;
 
-      auto owning_cache_size = static_cast<uint64_t>(block_cache_config.cache.split.cache_size * block_cache_config.cache.split.owning_ratio);
-      auto nonowning_cache_size = static_cast<uint64_t>(block_cache_config.cache.split.cache_size * block_cache_config.cache.split.nonowning_ratio);
+      auto owning_cache_size =
+          static_cast<uint64_t>(block_cache_config.cache.split.cache_size *
+                                block_cache_config.cache.split.owning_ratio);
+      auto nonowning_cache_size =
+          static_cast<uint64_t>(block_cache_config.cache.split.cache_size *
+                                block_cache_config.cache.split.nonowning_ratio);
       if (block_cache_config.cache.split.owning_cache_type == "lru") {
         owning_cache = make_lru_cache(owning_cache_size);
       } else if (block_cache_config.cache.split.owning_cache_type == "random") {
         owning_cache = make_random_cache(owning_cache_size);
       } else {
-        panic("Read cache type '{}' is not supported", block_cache_config.cache.split.owning_cache_type);
+        panic("Read cache type '{}' is not supported",
+              block_cache_config.cache.split.owning_cache_type);
       }
 
       if (block_cache_config.cache.split.nonowning_cache_type == "lru") {
         nonowning_cache = make_lru_cache(nonowning_cache_size);
-      } else if (block_cache_config.cache.split.nonowning_cache_type == "random") {
+      } else if (block_cache_config.cache.split.nonowning_cache_type ==
+                 "random") {
         nonowning_cache = make_random_cache(nonowning_cache_size);
       } else {
-        panic("Write cache type '{}' is not supported", block_cache_config.cache.split.nonowning_cache_type);
+        panic("Write cache type '{}' is not supported",
+              block_cache_config.cache.split.nonowning_cache_type);
       }
 
       cache = std::make_unique<SplitCache<K, V>>(
-          block_cache_config, db, block_cache_config.cache.split.cache_size, std::move(owning_cache), std::move(nonowning_cache));
+          block_cache_config, db, block_cache_config.cache.split.cache_size,
+          std::move(owning_cache), std::move(nonowning_cache));
     } else {
       panic("Block policy type '{}' is not supported",
             block_cache_config.policy_type);
@@ -132,9 +144,9 @@ public:
     }
   }
 
-  auto& get_cache() {
-    return cache;
-  }
+  auto &get_cache() { return cache; }
+
+  auto &get_db() { return db; }
 
   void dump_cache(fs::path p) {
     std::ofstream ofs(p, std::ios::out | std::ios::trunc);
