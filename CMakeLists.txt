@@ -180,6 +180,8 @@ add_dependency(stb https://github.com/nothings/stb 5736b15 FALSE)
 add_dependency(spdlog https://github.com/gabime/spdlog v1.11.0 TRUE)
 add_dependency(nlohmann_json https://github.com/nlohmann/json v3.11.2 TRUE)
 add_dependency(magic_enum https://github.com/Neargye/magic_enum v0.9.3 TRUE)
+add_dependency(parallel_hashmap https://github.com/greg7mdp/parallel-hashmap v1.3.12 TRUE)
+add_dependency(concurrentqueue https://github.com/cameron314/concurrentqueue v1.0.4 TRUE)
 
 set(EXPECTED_BUILD_TESTS OFF)
 add_dependency(tl_expected https://github.com/TartanLlama/expected v1.1.0 TRUE)
@@ -199,6 +201,8 @@ target_include_directories(block_cache PUBLIC
     ${nlohmann_json_SOURCE_DIR}
     ${magic_enum_SOURCE_DIR}/include
     ${tl_expected_SOURCE_DIR}/include/tl
+    ${parallel_hashmap_SOURCE_DIR}/parallel_hashmap
+    ${concurrentqueue_SOURCE_DIR}
 
     RDMA/src/
 )
@@ -210,6 +214,8 @@ target_link_libraries(block_cache PUBLIC
     nlohmann_json
     magic_enum
     expected
+    phmap
+    concurrentqueue
 
     infinity
     ibverbs

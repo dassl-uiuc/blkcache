@@ -11,6 +11,7 @@
 #include "cache_policy/lru_policy.h"
 #include "cache_policy/random_policy.h"
 #include "cache_policy/split_policy.h"
+#include "cache_policy/thread_safe_lru_policy.h"
 
 #include "db/block_db.h"
 #include "db/db.h"
