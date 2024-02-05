@@ -49,6 +49,7 @@ struct RemoteMachineConfig {
   uint64_t index;
   std::string ip;
   uint64_t port;
+  bool server;
 };
 
 struct BlockCacheConfig {
@@ -102,6 +103,7 @@ inline void from_json(const json &j, RemoteMachineConfig &rmc) {
   j.at("index").get_to(rmc.index);
   j.at("ip").get_to(rmc.ip);
   j.at("port").get_to(rmc.port);
+  j.at("server").get_to(rmc.server);
 }
 
 inline void from_json(const json &j, BlockCacheConfig &bcc) {

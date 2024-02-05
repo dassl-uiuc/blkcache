@@ -27,18 +27,19 @@ struct ListNode {
   {}
 
   ListNode(const K& key, const V& val)
-    : ListNode(), k(key), v(val)
+    : prev(NOT_IN_LIST), next(nullptr), k(key), v(val)
   {}
 
   bool IsInList() const {
-    return m_prev != NOT_IN_LIST;
+    return prev != NOT_IN_LIST;
   }
 
   K k;
-  V v
-  ListNode* m_prev;
-  ListNode* m_next;
+  V v;
+  ListNode* prev;
+  ListNode* next;
 };
+
 
 template <typename KeyType, typename ValueType>
 class ThreadSafeLRUCache : public CachePolicy<KeyType, ValueType> {
@@ -50,22 +51,17 @@ public:
 
   void put(const KeyType &key, const ValueType &val, bool owning = false) override {
 
-				// keyInDurabilityLog.lazy_emplace_l(kvKey,
-				// 							[&](auto& v) { v.second = std::max(opnum, v.second); },
-				// 							[&](const auto& ctor) { ctor(kvKey, opnum); }
-				// );
 
-
-    item_map.modify_if(key,
-      // key is present
-      [&](auto& v)
-      { 
-        item_list.erase(v);
-        v.second = val;
-      },
-      // key is not present
-      [&](const auto& ctor) { ctor = std::make_pair(key, val); }
-    );
+    // item_map.modify_if(key,
+    //   // key is present
+    //   [&](auto& v)
+    //   { 
+    //     item_list.erase(v);
+    //     v.second = val;
+    //   },
+    //   // key is not present
+    //   [&](const auto& ctor) { ctor = std::make_pair(key, val); }
+    // );
 
     auto it = item_map.find(key);
     if (it != item_map.end()) {
@@ -105,11 +101,11 @@ private:
   };
 
 private:
-  // std::list<std::pair<KeyType, ValueType>> item_list;
-  // std::unordered_map<KeyType, decltype(item_list.begin())> item_map;
-  ThreadSafeMap<KeyType, ListNode*> item_map;
+  std::list<std::pair<KeyType, ValueType>> item_list;
+  std::unordered_map<KeyType, decltype(item_list.begin())> item_map;
+  // ThreadSafeMap<KeyType, ListNode*> item_map;
   // moodycamel::ConcurrentQueue<std::pair<KeyType, ValueType>> item_list;
-  ListNode head;
-  ListNode tail;
+  ListNode<std::string, std::string>* head;
+  ListNode<std::string, std::string>* tail;
   std::mutex m;
 };
