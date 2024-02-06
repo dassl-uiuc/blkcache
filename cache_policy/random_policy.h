@@ -10,12 +10,15 @@
 template <typename KeyType, typename ValueType>
 class RandomCache : public CachePolicy<KeyType, ValueType> {
 public:
-  RandomCache(BlockCacheConfig block_cache_config, std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
-      : CachePolicy<KeyType, ValueType>(block_cache_config, block_db, cache_size) {
+  RandomCache(BlockCacheConfig block_cache_config,
+              std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
+      : CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
+                                        cache_size) {
     distribution = std::uniform_int_distribution<int>(0, cache_size - 1);
   }
 
-  void put(const KeyType &key, const ValueType &val, bool owning = false) override {
+  void put(const KeyType &key, const ValueType &val,
+           bool owning = false) override {
     // info("put {} {}", key, val);
     auto it = item_map.find(key);
     if (it != item_map.end()) {

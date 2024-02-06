@@ -28,11 +28,12 @@ public:
 
     info("Opened BlockDB: {}", block_cache_config.db.block_db.filename);
 
-    const auto& block_size = block_cache_config.db.block_db.block_size;
+    const auto &block_size = block_cache_config.db.block_db.block_size;
 
     num_entries = block_cache_config.db.block_db.num_entries;
     storage_size = num_entries * block_size;
-    info("BlockDB num_entries: {}, block_size: {}, storage_size: {}", num_entries, block_size, storage_size);
+    info("BlockDB num_entries: {}, block_size: {}, storage_size: {}",
+         num_entries, block_size, storage_size);
 
     char *buf = nullptr;
     constexpr std::size_t MAX_POSIX_MEMALIGN_SIZE = 1024u * 1024u * 1024u;
@@ -71,17 +72,17 @@ public:
       return index;
     } else {
       auto index = std::hash<std::string>{}(s);
-      return index % num_entries;
+      return index % (num_entries - 1);
     }
   }
 
-  uint8_t* get_pointer_to_data_block(std::string &key) override {
-    const auto& block_size = block_cache_config.db.block_db.block_size;
+  uint8_t *get_pointer_to_data_block(std::string &key) override {
+    const auto &block_size = block_cache_config.db.block_db.block_size;
 
     auto index = hash_index(key);
     auto offset = index * block_size;
 
-    return reinterpret_cast<uint8_t*>(offset);
+    return reinterpret_cast<uint8_t *>(offset);
   }
 
   DBError put(const std::string &key, const std::string &value) override {
@@ -90,7 +91,7 @@ public:
     //   return DBError::WriteKeyExists;
     // }
 
-    const auto& block_size = block_cache_config.db.block_db.block_size;
+    const auto &block_size = block_cache_config.db.block_db.block_size;
 
     char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
     auto buf_offset = 0;
@@ -132,7 +133,7 @@ public:
     //     found != std::end(key_to_offset)) {
     //   auto offset = found->second;
 
-    const auto& block_size = block_cache_config.db.block_db.block_size;
+    const auto &block_size = block_cache_config.db.block_db.block_size;
 
     auto index = hash_index(key);
     auto offset = index * block_size;
@@ -140,7 +141,8 @@ public:
     char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
     auto result = pread(fd, buf, block_size, offset);
     if (result != block_size) {
-      // panic("Read less than result {} < {} at offset {}", result, block_size, offset);
+      // panic("Read less than result {} < {} at offset {}", result, block_size,
+      // offset);
       return tl::unexpected{DBError::KeyDoesNotExist};
     }
 

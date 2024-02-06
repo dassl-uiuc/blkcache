@@ -63,6 +63,45 @@ int main(int argc, char **argv) {
 
   block_cache.get_cache()->dump(std::cout);
 
+  config.policy_type = "thread_safe_lru";
+  config.db.block_db.num_entries = 1024 * 1024;
+  auto total_work = 1024 * 8;
+  config.cache.thread_safe_lru.cache_size = total_work / 4;
+  auto num_threads = 64;
+  auto work_per_thread = total_work / num_threads;
+  block_cache = BlockCache<std::string, std::string>(config);
+  for (auto i = 0; i < total_work; i++)
+  {
+    auto key = std::to_string(i);
+    auto value = std::to_string(i);
+    block_cache.put(key, value);
+  }
+  info("Finished putting {} items", total_work);
+  auto timer = std::chrono::high_resolution_clock::now();
+  auto workers = std::vector<std::thread>();
+  for (int i = 0; i < num_threads; i++) {
+    workers.push_back(std::thread([&, i] {
+      for (auto j = 0; j < work_per_thread; j++)
+      {
+        auto key = std::to_string(j + i * work_per_thread);
+        auto value = std::to_string(j + i * work_per_thread);
+        auto expected_value = block_cache.get(key);
+        if (expected_value != value) {
+          panic("Expected {} but got {}", value, expected_value);
+        }
+      }
+    }));
+  }
+
+  for (auto &worker : workers) {
+    worker.join();
+  }
+
+  block_cache.get_cache()->dump(std::cout);
+  auto elapsed = std::chrono::high_resolution_clock::now() - timer;
+  info("Elapsed time: {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+
+
   // auto random_cache =
   //     RandomCache<std::string, std::string>::InitializeFromConfigFile(
   //         "../config.json");

@@ -25,7 +25,7 @@ public:
   virtual void close() {}
   virtual void shutdown() {}
 
-  virtual uint8_t* get_pointer_to_data_block(std::string &key) = 0;
+  virtual uint8_t *get_pointer_to_data_block(std::string &key) = 0;
   virtual DBError put(const std::string &key, const std::string &value) = 0;
   virtual tl::expected<std::string, DBError> get(const std::string &key) = 0;
   virtual DBError remove(const std::string &key) = 0;

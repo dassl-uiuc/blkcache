@@ -33,6 +33,10 @@ struct SplitCacheConfig {
   std::string nonowning_cache_type;
 };
 
+struct ThreadSafeLRUConfig {
+  int cache_size;
+};
+
 struct RdmaConfig {
   int context_index;
 };
@@ -41,6 +45,7 @@ struct CacheConfig {
   LRUConfig lru;
   RandomCacheConfig random;
   SplitCacheConfig split;
+  ThreadSafeLRUConfig thread_safe_lru;
   bool paged;
   RdmaConfig rdma;
 };
@@ -92,6 +97,10 @@ inline void from_json(const json &j, SplitCacheConfig &split) {
   j.at("nonowning_cache_type").get_to(split.nonowning_cache_type);
 }
 
+inline void from_json(const json &j, ThreadSafeLRUConfig &lru) {
+  j.at("cache_size").get_to(lru.cache_size);
+}
+
 inline void from_json(const json &j, RdmaConfig &rdma) {
   j.at("context_index").get_to(rdma.context_index);
 }
@@ -100,6 +109,7 @@ inline void from_json(const json &j, CacheConfig &cc) {
   j.at("lru").get_to(cc.lru);
   j.at("random").get_to(cc.random);
   j.at("split").get_to(cc.split);
+  j.at("thread_safe_lru").get_to(cc.thread_safe_lru);
   j.at("paged").get_to(cc.paged);
   j.at("rdma").get_to(cc.rdma);
 }

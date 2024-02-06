@@ -87,6 +87,10 @@ public:
       cache = std::make_unique<SplitCache<K, V>>(
           block_cache_config, db, block_cache_config.cache.split.cache_size,
           std::move(owning_cache), std::move(nonowning_cache));
+    } else if (block_cache_config.policy_type == "thread_safe_lru") {
+      cache = std::make_unique<ThreadSafeLRUCache<K, V>>(
+          block_cache_config, db,
+          block_cache_config.cache.thread_safe_lru.cache_size);
     } else {
       panic("Block policy type '{}' is not supported",
             block_cache_config.policy_type);

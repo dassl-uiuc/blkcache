@@ -23,6 +23,9 @@
             "owning_cache_type": "lru",
             "nonowning_cache_type": "lru"
         },
+        "thread_safe_lru": {
+            "cache_size": 8
+        },
         "paged": true,
         "rdma": {
             "context_index": 3
