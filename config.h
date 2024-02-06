@@ -52,12 +52,17 @@ struct RemoteMachineConfig {
   bool server;
 };
 
+struct Baseline {
+  std::string selected;
+};
+
 struct BlockCacheConfig {
   bool ingest_block_index;
   std::string policy_type;
   std::string db_type;
   DBConfig db;
   CacheConfig cache;
+  Baseline baseline;
   std::vector<RemoteMachineConfig> remote_machine_configs;
 };
 
@@ -106,11 +111,16 @@ inline void from_json(const json &j, RemoteMachineConfig &rmc) {
   j.at("server").get_to(rmc.server);
 }
 
+inline void from_json(const json &j, Baseline &baseline) {
+  j.at("selected").get_to(baseline.selected);
+}
+
 inline void from_json(const json &j, BlockCacheConfig &bcc) {
   j.at("ingest_block_index").get_to(bcc.ingest_block_index);
   j.at("policy_type").get_to(bcc.policy_type);
   j.at("db_type").get_to(bcc.db_type);
   j.at("db").get_to(bcc.db);
   j.at("cache").get_to(bcc.cache);
+  j.at("baseline").get_to(bcc.baseline);
   j.at("remote_machines").get_to(bcc.remote_machine_configs);
 }

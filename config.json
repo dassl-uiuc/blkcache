@@ -28,6 +28,12 @@
             "context_index": 3
         }
     },
+    "baseline": {
+        "random": {},
+        "client_aware": {},
+        "ldc": {},
+        "selected": "random"
+    },
     "remote_machines": [
         {
             "index": 0,
