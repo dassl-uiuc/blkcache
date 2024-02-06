@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 		  << "\ttotal misses: " << cache_misses << std::endl
 		  << "\tcapacity misses: " << miss_capacity << std::endl
 		  << "\tnon-cold access: " << non_cold_access << std::endl
-		  << "\tnon-cold time total: " << elapsed_capacity << " us" << std::endl
+		  << "\tnon-cold time total in us: " << elapsed_capacity << std::endl
 		  << "\tdemote failures: " << demote_failure << std::endl
 		  << "\tioctl time in us: " << ioctl_time << std::endl;
 
