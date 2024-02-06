@@ -87,12 +87,12 @@ int main(int argc, char **argv)
 	long long total_time = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
 
 	std::cout << "run statistics: " << std::endl
-		  << "\tcache percentage: " << cache_perc << "%" << std::endl
-		  << "\ttotal time taken: " << total_time << " us" << std::endl
+		  << "\tcache percentage: " << cache_perc << std::endl
+		  << "\ttotal time taken in us: " << total_time << std::endl
 		  << "\ttotal misses: " << cache_misses << std::endl
 		  << "\tcapacity misses: " << miss_capacity << std::endl
 		  << "\tnon-cold access: " << non_cold_access << std::endl
-		  << "\tnon-cold time total: " << elapsed_capacity << " us" << std::endl;
+		  << "\tnon-cold time total in us: " << elapsed_capacity << std::endl;
 
 	return EXIT_SUCCESS;
 }
