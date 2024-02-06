@@ -18,6 +18,7 @@ typedef union rdma_request_short {
 		uint64_t size;
 		uint64_t nd_idx;
 		uint64_t id;
+		uint64_t sector_num;
 	};
 	uint64_t sector_id;
 } __attribute__((aligned(4096))) rdma_request_short_t;
