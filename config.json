@@ -35,7 +35,8 @@
         "random": {},
         "client_aware": {},
         "ldc": {},
-        "selected": "random"
+        "selected": "random",
+        "one_sided_rdma_enabled": false
     },
     "remote_machines": [
         {
