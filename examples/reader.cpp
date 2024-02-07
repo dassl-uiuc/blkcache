@@ -64,10 +64,11 @@ int main(int argc, char **argv) {
   block_cache.get_cache()->dump(std::cout);
 
   config.policy_type = "thread_safe_lru";
+  config.ingest_block_index = true;
   config.db.block_db.num_entries = 1024 * 1024;
   auto total_work = 1024 * 8;
   config.cache.thread_safe_lru.cache_size = total_work / 4;
-  auto num_threads = 64;
+  auto num_threads = 2;
   auto work_per_thread = total_work / num_threads;
   block_cache = BlockCache<std::string, std::string>(config);
   for (auto i = 0; i < total_work; i++)
@@ -97,9 +98,11 @@ int main(int argc, char **argv) {
     worker.join();
   }
 
-  block_cache.get_cache()->dump(std::cout);
   auto elapsed = std::chrono::high_resolution_clock::now() - timer;
   info("Elapsed time: {}ms", std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+  block_cache.get_cache()->dump(std::cout);
+
+  info("AA {}", block_cache.exists_in_cache("1"));
 
 
   // auto random_cache =

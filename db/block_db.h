@@ -3,6 +3,8 @@
 #include "config.h"
 #include "db.h"
 
+#include "unordered_dense.h"
+
 #include <assert.h>
 #include <list>
 #include <unordered_map>
@@ -71,7 +73,7 @@ public:
       }
       return index;
     } else {
-      auto index = std::hash<std::string>{}(s);
+      auto index = ankerl::unordered_dense::hash<std::string>{}(s);
       return index % (num_entries - 1);
     }
   }

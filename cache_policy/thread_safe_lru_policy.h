@@ -85,7 +85,7 @@ public:
     }
 
     if (!eviction_performed) {
-      size++;
+      size = current_size.fetch_add(1, std::memory_order_relaxed);
     }
 
     if (size > this->cache_size) {
@@ -126,6 +126,17 @@ public:
   }
 
   bool exist(const KeyType &key) override {
+    // if (key == "4201")
+    // {
+    //   dump(std::cout);
+    //   info("Checking for key {}", key);
+    //   info("CONTAINS {}", item_map.contains(key));
+    //   bool acutally_contains = false;
+    //   item_map.if_contains(key, [&](auto &v) {
+    //     acutally_contains = true;
+    //   });
+    //   info("ACTUALLY CONTAINS {}", acutally_contains);
+    // }
     return item_map.contains(key);
     // return (item_map.count(key) > 0);
   }
@@ -133,6 +144,19 @@ public:
   void remove(const KeyType &key) override { panic("Unsupported"); }
 
   void dump(std::ostream &os) override {
+    // for (auto &it : item_map) {
+    //   os << " " << it.first << "\n";
+    // }
+    info("Dumping cache");
+    auto linked_list_size = 0;
+    for (auto* h = head.next; h != &tail; h = h->next) {
+      // os << h->k << "\n";
+      linked_list_size++;
+    }
+    os << "Item map size: " << item_map.size() << "\n";
+    os << "Linked list size: " << linked_list_size << "\n";
+    os << "Current size: " << current_size.load() << "\n";
+    os << "Cache size: " << this->cache_size << "\n";
     // for (const auto &[k, v] : item_list) {
     //   os << k << "\n";
     // }
@@ -180,7 +204,7 @@ private:
   };
 
 private:
-  std::list<std::pair<KeyType, ValueType>> item_list;
+  // std::list<std::pair<KeyType, ValueType>> item_list;
   // std::unordered_map<KeyType, decltype(item_list.begin())> item_map;
   ThreadSafeMap<KeyType, NodeValuePair> item_map;
   // moodycamel::ConcurrentQueue<std::pair<KeyType, ValueType>> item_list;

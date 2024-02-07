@@ -196,7 +196,7 @@ target_include_directories(block_cache PUBLIC
     .
 
     ${fmt_SOURCE_DIR}
-    ${unordered_dense_SOURCE_DIR}
+    ${unordered_dense_SOURCE_DIR}/include/ankerl
     ${spdlog_SOURCE_DIR}
     ${nlohmann_json_SOURCE_DIR}
     ${magic_enum_SOURCE_DIR}/include
