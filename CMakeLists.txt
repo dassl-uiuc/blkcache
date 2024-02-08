@@ -190,8 +190,6 @@ add_library(block_cache ${BLOCK_CACHE_LIBRARY_BUILD}
             block_cache.cpp
             block_cache.h)
 
-add_subdirectory(RDMA)
-
 target_include_directories(block_cache PUBLIC
     .
 
@@ -203,8 +201,6 @@ target_include_directories(block_cache PUBLIC
     ${tl_expected_SOURCE_DIR}/include/tl
     ${parallel_hashmap_SOURCE_DIR}/parallel_hashmap
     ${concurrentqueue_SOURCE_DIR}
-
-    RDMA/src/
 )
 
 target_link_libraries(block_cache PUBLIC
@@ -217,7 +213,6 @@ target_link_libraries(block_cache PUBLIC
     phmap
     concurrentqueue
 
-    infinity
     ibverbs
     Threads::Threads    
 )
