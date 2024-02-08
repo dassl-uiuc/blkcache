@@ -65,6 +65,7 @@ struct Baseline {
 struct BlockCacheConfig {
   bool ingest_block_index;
   std::string policy_type;
+  uint64_t rdma_port;
   std::string db_type;
   DBConfig db;
   CacheConfig cache;
@@ -130,6 +131,7 @@ inline void from_json(const json &j, Baseline &baseline) {
 inline void from_json(const json &j, BlockCacheConfig &bcc) {
   j.at("ingest_block_index").get_to(bcc.ingest_block_index);
   j.at("policy_type").get_to(bcc.policy_type);
+  j.at("rdma_port").get_to(bcc.rdma_port);
   j.at("db_type").get_to(bcc.db_type);
   j.at("db").get_to(bcc.db);
   j.at("cache").get_to(bcc.cache);
