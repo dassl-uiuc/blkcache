@@ -119,8 +119,11 @@ public:
     {
       // Try to push the node to the front of the list
       std::unique_lock<std::mutex> lock(m, std::try_to_lock);
-      erase(n);
-      push_front(n);
+      if (lock)
+      {
+        erase(n);
+        push_front(n);
+      }
     }
     return ret;
   }
