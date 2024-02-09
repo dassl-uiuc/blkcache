@@ -31,6 +31,7 @@ public:
     KeyType k;
     ListNode *prev;
     ListNode *next;
+    int orig_k;
   };
   inline static ListNode *const OutOfListMarker = (ListNode *)-1;
 
@@ -55,22 +56,25 @@ public:
   void put(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     ListNode *n = nullptr;
-    bool inserted = false;
-    while (!inserted) {
-      item_map.lazy_emplace_l(
-          key,
-          [&](auto &v) {
-            inserted = true;
-            n = v.second.node;
-            v.second.value = val;
-          },
-          [&](const auto &ctor) {
-            inserted = true;
-            n = new ListNode(key);
-            NodeValuePair nvp(n, val);
-            ctor(key, nvp);
-          });
-    }
+    {
+      std::lock_guard<std::mutex> lock(m);
+      bool inserted = false;
+      while (!inserted) {
+        item_map.lazy_emplace_l(
+            key,
+            [&](auto &v) {
+              inserted = true;
+              n = v.second.node;
+              v.second.value = val;
+            },
+            [&](const auto &ctor) {
+              inserted = true;
+              n = new ListNode(key);
+              NodeValuePair nvp(n, val);
+              ctor(key, nvp);
+            });
+      }
+      n->orig_k = std::stoi(key);
 
     auto size = current_size.load(std::memory_order_relaxed);
     bool eviction_performed = false;
@@ -79,10 +83,7 @@ public:
       eviction_performed = true;
     }
 
-    {
-      std::unique_lock<std::mutex> lock(m);
-      push_front(n);
-    }
+    push_front(n);
 
     if (!eviction_performed) {
       size = current_size.fetch_add(1, std::memory_order_relaxed);
@@ -92,6 +93,7 @@ public:
       if (current_size.compare_exchange_strong(size, size - 1)) {
         evict();
       }
+    }
     }
 
     // auto it = item_map.find(key);
@@ -121,8 +123,12 @@ public:
       std::unique_lock<std::mutex> lock(m, std::try_to_lock);
       if (lock)
       {
-        erase(n);
-        push_front(n);
+        if (n->IsInList())
+        {
+          erase(n);
+          push_front(n);
+        }
+        lock.unlock();
       }
     }
     return ret;
@@ -178,22 +184,27 @@ public:
     ListNode *next = node->next;
     prev->next = next;
     next->prev = prev;
-    node->prev = OutOfListMarker;
+    // node->prev = OutOfListMarker;
+    // node->next = nullptr;
   }
 
   void evict() {
-    std::unique_lock<std::mutex> lock(m);
-    ListNode *last_node = tail.prev;
-    if (last_node == &head) {
-      return;
-    }
-    erase(last_node);
-    lock.unlock();
+    ListNode *last_node = nullptr;
+    {
+      // std::lock_guard<std::mutex> lock(m);
+      last_node = tail.prev;
+      if (last_node == &head) {
+        return;
+      }
+      // info("Erased {}", last_node->k);
 
     item_map.erase_if(last_node->k, [](auto &v) {
-      delete v.second.node;
+      // delete v.second.node;
       return true;
     });
+      erase(last_node);
+    delete last_node;
+    }
   }
 
 private:
