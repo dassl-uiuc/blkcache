@@ -92,6 +92,7 @@ public:
     // std::end(key_to_offset)) {
     //   return DBError::WriteKeyExists;
     // }
+    std::lock_guard<std::mutex> lock(m);
 
     const auto &block_size = block_cache_config.db.block_db.block_size;
 
@@ -189,6 +190,7 @@ public:
   std::size_t size() const override { return 0; }
 
 private:
+  std::mutex m;
   std::unordered_map<std::string, int> key_to_offset;
   int fd = -1;
   size_t num_entries = 0;

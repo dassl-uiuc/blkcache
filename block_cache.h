@@ -111,11 +111,10 @@ public:
 
   void put(const K &k, const V &v, bool owning = true) {
     writes += 1;
-    if (cache->exist(k)) {
-    } else {
-      if (auto err = db->put(k, v); err != DBError::None) {
-        panic("Error writing: {}", magic_enum::enum_name(err));
-      }
+    // if (cache->exist(k)) {
+    // }
+    if (auto err = db->put(k, v); err != DBError::None) {
+      panic("Error writing: {}", magic_enum::enum_name(err));
     }
     cache->put(k, v, owning);
   }
@@ -143,7 +142,7 @@ public:
         // Put dummy value in the cache
         cache->put(k, V{}, owning);
 
-        // panic("value for key {} does not exist");
+        panic("value for key {} does not exist", k);
       }
       return V{};
     }

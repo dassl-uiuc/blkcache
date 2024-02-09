@@ -55,26 +55,23 @@ public:
 
   void put(const KeyType &key, const ValueType &val,
            bool owning = false) override {
+    std::lock_guard<std::mutex> lock(m);
     ListNode *n = nullptr;
-    {
-      std::lock_guard<std::mutex> lock(m);
-      bool inserted = false;
-      while (!inserted) {
-        item_map.lazy_emplace_l(
-            key,
-            [&](auto &v) {
-              inserted = true;
-              n = v.second.node;
-              v.second.value = val;
-            },
-            [&](const auto &ctor) {
-              inserted = true;
-              n = new ListNode(key);
-              NodeValuePair nvp(n, val);
-              ctor(key, nvp);
-            });
-      }
-      n->orig_k = std::stoi(key);
+    bool inserted = false;
+    item_map.lazy_emplace_l(
+        key,
+        [&](auto &v) {
+          n = v.second.node;
+          erase(n);
+          v.second.value = val;
+        },
+        [&](const auto &ctor) {
+          inserted = true;
+          n = new ListNode(key);
+          NodeValuePair nvp(n, val);
+          ctor(key, nvp);
+        });
+    n->orig_k = std::stoi(key);
 
     auto size = current_size.load(std::memory_order_relaxed);
     bool eviction_performed = false;
@@ -94,7 +91,6 @@ public:
         evict();
       }
     }
-    }
 
     // auto it = item_map.find(key);
     // if (it != item_map.end()) {
@@ -112,7 +108,7 @@ public:
     // item_list.splice(item_list.begin(), item_list, it->second);
     // return it->second->second;
 
-    ValueType ret;
+    ValueType ret{};
     ListNode *n = nullptr;
     item_map.modify_if(key, [&](auto &v) {
       n = v.second.node;
@@ -184,8 +180,8 @@ public:
     ListNode *next = node->next;
     prev->next = next;
     next->prev = prev;
-    // node->prev = OutOfListMarker;
-    // node->next = nullptr;
+    node->prev = OutOfListMarker;
+    node->next = nullptr;
   }
 
   void evict() {
@@ -198,9 +194,9 @@ public:
       }
       // info("Erased {}", last_node->k);
 
-    item_map.erase_if(last_node->k, [](auto &v) {
+    item_map.erase_if(last_node->k, [&](auto &v) {
       // delete v.second.node;
-      return true;
+      return last_node == v.second.node;
     });
       erase(last_node);
     delete last_node;
