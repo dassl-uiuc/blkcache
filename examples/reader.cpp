@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
   config.db.block_db.num_entries = 1024 * 1024;
   auto total_work = 1024 * 8;
   config.cache.thread_safe_lru.cache_size = total_work / 4;
-  auto num_threads = 2;
+  auto num_threads = 16;
   auto work_per_thread = total_work / num_threads;
   block_cache = BlockCache<std::string, std::string>(config);
   for (auto i = 0; i < total_work; i++)

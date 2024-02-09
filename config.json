@@ -2,6 +2,7 @@
     "ingest_block_index": false,
     "policy_type": "lru",
     "db_type": "block_db",
+    "rdma_port": 20000,
     "db": {
         "block_db": {
             "filename": "database.db",
