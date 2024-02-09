@@ -149,19 +149,16 @@ public:
   void remove(const KeyType &key) override { panic("Unsupported"); }
 
   void dump(std::ostream &os) override {
-    // for (auto &it : item_map) {
-    //   os << " " << it.first << "\n";
-    // }
-    info("Dumping cache");
     auto linked_list_size = 0;
     for (auto* h = head.next; h != &tail; h = h->next) {
-      // os << h->k << "\n";
+      os << h->k << "\n";
       linked_list_size++;
     }
-    os << "Item map size: " << item_map.size() << "\n";
-    os << "Linked list size: " << linked_list_size << "\n";
-    os << "Current size: " << current_size.load() << "\n";
-    os << "Cache size: " << this->cache_size << "\n";
+    // os << "Item map size: " << item_map.size() << "\n";
+    // os << "Linked list size: " << linked_list_size << "\n";
+    // os << "Current size: " << current_size.load() << "\n";
+    // os << "Cache size: " << this->cache_size << "\n";
+
     // for (const auto &[k, v] : item_list) {
     //   os << k << "\n";
     // }
