@@ -86,11 +86,11 @@ public:
       size = current_size.fetch_add(1, std::memory_order_relaxed);
     }
 
-    if (size > this->cache_size) {
-      if (current_size.compare_exchange_strong(size, size - 1)) {
-        evict();
-      }
-    }
+    // if (size > this->cache_size) {
+    //   if (current_size.compare_exchange_strong(size, size - 1)) {
+    //     evict();
+    //   }
+    // }
 
     // auto it = item_map.find(key);
     // if (it != item_map.end()) {
@@ -154,10 +154,10 @@ public:
       os << h->k << "\n";
       linked_list_size++;
     }
-    // os << "Item map size: " << item_map.size() << "\n";
-    // os << "Linked list size: " << linked_list_size << "\n";
-    // os << "Current size: " << current_size.load() << "\n";
-    // os << "Cache size: " << this->cache_size << "\n";
+    os << "Item map size: " << item_map.size() << "\n";
+    os << "Linked list size: " << linked_list_size << "\n";
+    os << "Current size: " << current_size.load() << "\n";
+    os << "Cache size: " << this->cache_size << "\n";
 
     // for (const auto &[k, v] : item_list) {
     //   os << k << "\n";
