@@ -20,6 +20,38 @@ enum class BlockCacheError { Uninitialized, WriteKeyExists };
 
 namespace fs = std::filesystem;
 
+
+template<class T>
+class CopyableAtomic : public std::atomic<T>
+{
+public:
+    //defaultinitializes value
+    CopyableAtomic() = default;
+
+    constexpr CopyableAtomic(T desired) : 
+        std::atomic<T>(desired) 
+    {}
+
+    constexpr CopyableAtomic(const CopyableAtomic<T>& other) :
+        CopyableAtomic(other.load(std::memory_order_relaxed))
+    {}
+
+    // operator T&()
+    // {
+    //   return *this;
+    // }
+
+    // operator T() const
+    // {
+    //   return this->load(std::memory_order_relaxed);
+    // }
+
+    CopyableAtomic& operator=(const CopyableAtomic<T>& other) {
+        this->store(other.load(std::memory_order_acquire), std::memory_order_release);
+        return *this;
+    }
+};
+
 template <typename K, typename V> class BlockCache {
   using DefaultCachePolicy = CachePolicy<K, V>;
 
@@ -166,12 +198,13 @@ public:
       panic("Unable to open file {}", p.string());
     }
     json j;
-    j["writes"] = writes;
-    j["reads"] = reads;
-    j["cache_hit"] = cache_hit;
-    j["cache_miss"] = cache_miss;
-    j["cache_not_compulsory_miss"] = cache_not_compulsory_miss;
-    j["cache_compulsory_miss"] = cache_compulsory_miss;
+    j["writes"] = writes.load(std::memory_order_relaxed);
+    j["reads"] = reads.load(std::memory_order_relaxed);
+    j["cache_hit"] = cache_hit.load(std::memory_order_relaxed);
+    j["cache_miss"] = cache_miss.load(std::memory_order_relaxed);
+    j["cache_not_compulsory_miss"] = cache_not_compulsory_miss.load(std::memory_order_relaxed);
+    j["cache_compulsory_miss"] = cache_compulsory_miss.load(std::memory_order_relaxed);
+    // std::cout << j.dump(2);
     ofs << j.dump(2);
   }
 
@@ -180,10 +213,10 @@ private:
   std::shared_ptr<BlockDB> db = nullptr;
   std::unique_ptr<DefaultCachePolicy> cache = nullptr;
 
-  uint64_t writes = 0;
-  uint64_t reads = 0;
-  uint64_t cache_hit = 0;
-  uint64_t cache_miss = 0;
-  uint64_t cache_not_compulsory_miss = 0;
-  uint64_t cache_compulsory_miss = 0;
+  CopyableAtomic<uint64_t> writes = 0;
+  CopyableAtomic<uint64_t> reads = 0;
+  CopyableAtomic<uint64_t> cache_hit = 0;
+  CopyableAtomic<uint64_t> cache_miss = 0;
+  CopyableAtomic<uint64_t> cache_not_compulsory_miss = 0;
+  CopyableAtomic<uint64_t> cache_compulsory_miss = 0;
 };

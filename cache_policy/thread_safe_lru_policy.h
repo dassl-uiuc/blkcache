@@ -9,10 +9,14 @@
 #include "concurrentqueue.h"
 #include "parallel_hashmap/phmap.h"
 #include "thread-safe-lru/scalable-cache.h"
+#include "thread-safe-lru/scalable-cache.h"
 
 typedef tstarling::ThreadSafeStringKey String;
 typedef String::HashCompare HashCompare;
 typedef tstarling::ThreadSafeScalableCache<String, std::string, HashCompare> ScalableCache;
+typedef tstarling::ThreadSafeLRUCache<String, std::string, HashCompare> AtomicCache;
+
+using Cache = AtomicCache;
 
 template <typename KeyType, typename ValueType>
 class ThreadSafeLRUCache : public CachePolicy<KeyType, ValueType> {
@@ -21,7 +25,7 @@ public:
                      std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
       : CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
                                         cache_size) {
-    secm = std::unique_ptr<ScalableCache>(new ScalableCache(cache_size));
+    secm = std::unique_ptr<Cache>(new Cache(cache_size));
   }
 
   void put(const KeyType &key, const ValueType &val,
@@ -32,7 +36,7 @@ public:
 
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
-    ScalableCache::ConstAccessor ac;
+    Cache::ConstAccessor ac;
     ValueType ret;
     if (secm->find(ac, skey)) {
       ret = *ac;
@@ -43,7 +47,7 @@ public:
 
   bool exist(const KeyType &key) override {
     String skey(key.c_str(), key.length());
-    ScalableCache::ConstAccessor ac;
+    Cache::ConstAccessor ac;
     if (secm->find(ac, skey)) {
       return true;
     }
@@ -61,7 +65,7 @@ public:
   }
 
 private:
-  std::unique_ptr<ScalableCache> secm = nullptr;
+  std::unique_ptr<Cache> secm = nullptr;
 };
 
 
