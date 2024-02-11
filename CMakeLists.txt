@@ -182,6 +182,7 @@ add_dependency(nlohmann_json https://github.com/nlohmann/json v3.11.2 TRUE)
 add_dependency(magic_enum https://github.com/Neargye/magic_enum v0.9.3 TRUE)
 add_dependency(parallel_hashmap https://github.com/greg7mdp/parallel-hashmap v1.3.12 TRUE)
 add_dependency(concurrentqueue https://github.com/cameron314/concurrentqueue v1.0.4 TRUE)
+add_dependency(tlru https://github.com/tstarling/thread-safe-lru df7b21c FALSE)
 
 set(EXPECTED_BUILD_TESTS OFF)
 add_dependency(tl_expected https://github.com/TartanLlama/expected v1.1.0 TRUE)
@@ -189,6 +190,9 @@ add_dependency(tl_expected https://github.com/TartanLlama/expected v1.1.0 TRUE)
 add_library(block_cache ${BLOCK_CACHE_LIBRARY_BUILD}
             block_cache.cpp
             block_cache.h)
+
+include(FindPkgConfig)
+pkg_search_module(TBB REQUIRED tbb)
 
 target_include_directories(block_cache PUBLIC
     .
@@ -201,6 +205,9 @@ target_include_directories(block_cache PUBLIC
     ${tl_expected_SOURCE_DIR}/include/tl
     ${parallel_hashmap_SOURCE_DIR}/parallel_hashmap
     ${concurrentqueue_SOURCE_DIR}
+    ${tlru_SOURCE_DIR}
+
+    ${TBB_INCLUDE_DIRS}
 )
 
 target_link_libraries(block_cache PUBLIC
@@ -215,6 +222,8 @@ target_link_libraries(block_cache PUBLIC
 
     ibverbs
     Threads::Threads    
+
+    ${TBB_LIBRARIES}
 )
 
 if (MSVC)
