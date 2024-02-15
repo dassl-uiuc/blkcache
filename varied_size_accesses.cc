@@ -7,8 +7,10 @@
 #include <string.h>
 #include <chrono>
 #include <random>
+#include <assert.h>
 
 #define BLKSZ (uint64_t)4096
+#define SECTORSZ (uint64_t)512
 
 int main(int argc, char **argv)
 {
@@ -18,14 +20,20 @@ int main(int argc, char **argv)
 	assert(fd);
 
 	uint64_t total_access_size = 50 * num_blks * BLKSZ;
-	static char buf[16 * BLKSZ] __attribute__((__aligned__(BLKSZ)));
+	static char buf[16 * SECTORSZ] __attribute__((__aligned__(SECTORSZ)));
 
 	srand(0);
 	auto start_time = std::chrono::high_resolution_clock::now();
 	while (total_access_size > 0) {
-		uint64_t access_size = std::min((rand() % 10 + 1) * BLKSZ, total_access_size);
-		uint64_t start_offset = rand() % (num_blks - (access_size / BLKSZ));
-		assert(pread(fd, buf, access_size, start_offset * BLKSZ) == access_size);
+		uint64_t access_size = std::min((rand() % 10 + 1) * SECTORSZ, total_access_size);
+		uint64_t start_offset = rand() % (num_blks * 8 - (access_size / SECTORSZ));
+		assert(pread(fd, buf, access_size, start_offset * SECTORSZ) == access_size);
+		for (int i = 0; i < access_size; i += SECTORSZ) {
+			char s[SECTORSZ];
+			memcpy(s, &buf[i], SECTORSZ);
+			std::string str(s);
+			assert(std::stoi(str) == i / SECTORSZ + start_offset);
+		}
 		total_access_size -= access_size;
 	}
 	auto end_time = std::chrono::high_resolution_clock::now();
