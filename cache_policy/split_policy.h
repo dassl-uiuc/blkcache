@@ -9,8 +9,8 @@ class SplitCache : public CachePolicy<KeyType, ValueType> {
 public:
   SplitCache(BlockCacheConfig block_cache_config,
              std::shared_ptr<BlockDB> block_db, uint64_t cache_size,
-             std::unique_ptr<CachePolicy<KeyType, ValueType>> owning_cache_,
-             std::unique_ptr<CachePolicy<KeyType, ValueType>> nonowning_cache_)
+             std::shared_ptr<CachePolicy<KeyType, ValueType>> owning_cache_,
+             std::shared_ptr<CachePolicy<KeyType, ValueType>> nonowning_cache_)
       : CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
                                         cache_size),
         owning_cache(std::move(owning_cache_)),
@@ -48,6 +48,6 @@ public:
   }
 
 private:
-  std::unique_ptr<CachePolicy<KeyType, ValueType>> owning_cache;
-  std::unique_ptr<CachePolicy<KeyType, ValueType>> nonowning_cache;
+  std::shared_ptr<CachePolicy<KeyType, ValueType>> owning_cache;
+  std::shared_ptr<CachePolicy<KeyType, ValueType>> nonowning_cache;
 };

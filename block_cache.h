@@ -68,12 +68,12 @@ public:
     }
 
     auto make_lru_cache = [&](const auto &cache_size) {
-      return std::make_unique<LRUCache<K, V>>(block_cache_config, db,
+      return std::make_shared<LRUCache<K, V>>(block_cache_config, db,
                                               cache_size);
     };
 
     auto make_random_cache = [&](const auto &cache_size) {
-      return std::make_unique<RandomCache<K, V>>(block_cache_config, db,
+      return std::make_shared<RandomCache<K, V>>(block_cache_config, db,
                                                  cache_size);
     };
 
@@ -88,8 +88,8 @@ public:
         panic("Read ratio and write ratio must sum to 1.0");
       }
 
-      std::unique_ptr<DefaultCachePolicy> owning_cache = nullptr;
-      std::unique_ptr<DefaultCachePolicy> nonowning_cache = nullptr;
+      std::shared_ptr<DefaultCachePolicy> owning_cache = nullptr;
+      std::shared_ptr<DefaultCachePolicy> nonowning_cache = nullptr;
 
       auto owning_cache_size =
           static_cast<uint64_t>(block_cache_config.cache.split.cache_size *
@@ -116,11 +116,11 @@ public:
               block_cache_config.cache.split.nonowning_cache_type);
       }
 
-      cache = std::make_unique<SplitCache<K, V>>(
+      cache = std::make_shared<SplitCache<K, V>>(
           block_cache_config, db, block_cache_config.cache.split.cache_size,
           std::move(owning_cache), std::move(nonowning_cache));
     } else if (block_cache_config.policy_type == "thread_safe_lru") {
-      cache = std::make_unique<ThreadSafeLRUCache<K, V>>(
+      cache = std::make_shared<ThreadSafeLRUCache<K, V>>(
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size);
     } else {
@@ -180,9 +180,9 @@ public:
     }
   }
 
-  auto &get_cache() { return cache; }
+  auto get_cache() { return cache; }
 
-  auto &get_db() { return db; }
+  auto get_db() { return db; }
 
   void dump_cache(fs::path p) {
     std::ofstream ofs(p, std::ios::out | std::ios::trunc);
@@ -211,7 +211,7 @@ public:
 private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<BlockDB> db = nullptr;
-  std::unique_ptr<DefaultCachePolicy> cache = nullptr;
+  std::shared_ptr<DefaultCachePolicy> cache = nullptr;
 
   CopyableAtomic<uint64_t> writes = 0;
   CopyableAtomic<uint64_t> reads = 0;

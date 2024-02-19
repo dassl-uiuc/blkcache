@@ -25,7 +25,7 @@ public:
                      std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
       : CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
                                         cache_size) {
-    secm = std::unique_ptr<Cache>(new Cache(cache_size));
+    secm = std::shared_ptr<Cache>(new Cache(cache_size));
   }
 
   void put(const KeyType &key, const ValueType &val,
@@ -65,7 +65,7 @@ public:
   }
 
 private:
-  std::unique_ptr<Cache> secm = nullptr;
+  std::shared_ptr<Cache> secm = nullptr;
 };
 
 
