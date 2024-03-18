@@ -192,11 +192,8 @@ public:
     cache->dump(ofs);
   }
 
-  void dump_cache_info(fs::path p) {
-    std::ofstream ofs(p, std::ios::out | std::ios::trunc);
-    if (!ofs) {
-      panic("Unable to open file {}", p.string());
-    }
+  json dump_cache_info_as_json()
+  {
     json j;
     j["writes"] = writes.load(std::memory_order_relaxed);
     j["reads"] = reads.load(std::memory_order_relaxed);
@@ -204,8 +201,15 @@ public:
     j["cache_miss"] = cache_miss.load(std::memory_order_relaxed);
     j["cache_not_compulsory_miss"] = cache_not_compulsory_miss.load(std::memory_order_relaxed);
     j["cache_compulsory_miss"] = cache_compulsory_miss.load(std::memory_order_relaxed);
-    // std::cout << j.dump(2);
-    ofs << j.dump(2);
+    return j;
+  }
+
+  void dump_cache_info(fs::path p) {
+    std::ofstream ofs(p, std::ios::out | std::ios::trunc);
+    if (!ofs) {
+      panic("Unable to open file {}", p.string());
+    }
+    ofs << dump_cache_info_as_json().dump(2);
   }
 
 private:
