@@ -179,6 +179,11 @@ public:
       return V{};
     }
   }
+  
+  void increment_cache_hit() { cache_hit++; }
+  void increment_cache_miss() { cache_miss++; }
+  void increment_cache_compulsory_miss() { cache_compulsory_miss++; }
+  void increment_cache_not_compulsory_miss() { cache_not_compulsory_miss++; }
 
   auto get_cache() { return cache; }
 
