@@ -92,7 +92,7 @@ public:
     // std::end(key_to_offset)) {
     //   return DBError::WriteKeyExists;
     // }
-    std::lock_guard<std::mutex> lock(m);
+    // std::lock_guard<std::mutex> lock(m);
 
     const auto &block_size = block_cache_config.db.block_db.block_size;
 
@@ -167,7 +167,7 @@ public:
     std::size_t key_length;
     read_data(key_length);
 
-    std::string key_expected(buf + buf_offset, buf + buf_offset + key_length);
+    std::string_view key_expected(buf + buf_offset, buf + buf_offset + key_length);
     if (key != key_expected) {
       return tl::unexpected{DBError::KeyIsNotExpected};
     }
