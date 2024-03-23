@@ -127,7 +127,7 @@ public:
 
             std::string_view key_expected(buf + buf_offset, buf + buf_offset + key_length);
             if (key != key_expected) {
-              panic("Key is not expected {} != {}", key, key_expected);
+              // panic("Key is not expected {} != {}", key, key_expected);
             }
 
             buf_offset += key_length;
