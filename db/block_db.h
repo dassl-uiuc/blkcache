@@ -138,7 +138,12 @@ public:
             std::string value(buf + buf_offset, buf + buf_offset + value_length);
             buf_offset += value_length;
 
+            // Callback
             async_read_request->callback(value);
+
+            // Add back to queue
+            async_read_requests.enqueue(async_read_request);
+
             io_uring_cqe_seen(&ring, cqe);
           }
         });
