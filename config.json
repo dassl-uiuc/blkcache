@@ -8,7 +8,9 @@
             "filename": "database.db",
             "num_entries": 1024,
             "block_size": 512,
-            "async": false
+            "async": false,
+            "io_uring_ring_size": 1024,
+            "io_uring_worker_threads": 1
         }
     },
     "cache": {

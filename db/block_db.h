@@ -14,13 +14,18 @@
 
 constexpr auto BLOCK_DB_SIZE = 4096u;
 
-#define URING_RING_SIZE 1024
-#define URING_WORKER_THREADS 1
-
 class BlockDB : public DB {
 public:
   virtual ~BlockDB() {
     if (fd) {
+      if (block_cache_config.db.block_db.async)
+      {
+        io_uring_queue_exit(&ring);
+        for (auto& t : async_worker_threads)
+        {
+          t.join();
+        }
+      }
       ::close(fd);
     }
   }
@@ -72,8 +77,8 @@ public:
 
     if (block_cache_config.db.block_db.async)
     {
-      io_uring_queue_init(URING_RING_SIZE, &ring, 0);
-      for (auto i = 0; i < URING_RING_SIZE; i++)
+      io_uring_queue_init(block_cache_config.db.block_db.io_uring_ring_size, &ring, 0);
+      for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
       {
         auto async_read_request = new AsyncReadRequest{};
         auto& iovecs = async_read_request->iovecs;
@@ -86,7 +91,7 @@ public:
 
         async_read_requests.enqueue(async_read_request);
       }
-      for (auto i = 0; i < URING_WORKER_THREADS; i++)
+      for (auto i = 0; i < block_cache_config.db.block_db.io_uring_worker_threads; i++)
       {
         async_worker_threads.emplace_back([this] {
           while (true)
@@ -95,7 +100,8 @@ public:
             int ret = io_uring_wait_cqe(&ring, &cqe);
             if (ret < 0)
             {
-              panic("io_uring_wait_cqe: {}", ret);
+              info("io_uring_wait_cqe: {}", ret);
+              break;
             }
 
             auto async_read_request = reinterpret_cast<AsyncReadRequest *>(io_uring_cqe_get_data(cqe));
@@ -113,7 +119,7 @@ public:
             read_data(avaliable);
 
             if (!avaliable) {
-              return tl::unexpected{DBError::KeyDoesNotExist};
+              panic("Key does not exist {}", key);
             }
 
             std::size_t key_length;
@@ -121,7 +127,7 @@ public:
 
             std::string_view key_expected(buf + buf_offset, buf + buf_offset + key_length);
             if (key != key_expected) {
-              return tl::unexpected{DBError::KeyIsNotExpected};
+              panic("Key is not expected {} != {}", key, key_expected);
             }
 
             buf_offset += key_length;
@@ -136,7 +142,6 @@ public:
             io_uring_cqe_seen(&ring, cqe);
           }
         });
-        async_worker_threads[i].detach();
       }
     }
   }
@@ -275,6 +280,7 @@ public:
 
     AsyncReadRequest* async_read_request;
     while (!async_read_requests.try_dequeue(async_read_request));
+
     async_read_request->key = key;
     async_read_request->callback = std::move(callback);
     auto& iovecs = async_read_request->iovecs;

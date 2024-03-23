@@ -12,6 +12,8 @@ struct BlockDBConfig {
   int num_entries;
   int block_size;
   bool async;
+  uint64_t io_uring_ring_size;
+  uint64_t io_uring_worker_threads;
 };
 
 struct DBConfig {
@@ -79,6 +81,8 @@ inline void from_json(const json &j, BlockDBConfig &block_db) {
   j.at("num_entries").get_to(block_db.num_entries);
   j.at("block_size").get_to(block_db.block_size);
   j.at("async").get_to(block_db.async);
+  j.at("io_uring_ring_size").get_to(block_db.io_uring_ring_size);
+  j.at("io_uring_worker_threads").get_to(block_db.io_uring_worker_threads);
 }
 
 inline void from_json(const json &j, DBConfig &db) {
