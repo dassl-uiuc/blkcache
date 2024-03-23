@@ -281,6 +281,8 @@ public:
     auto offset = index * block_size;
 
     auto id = current_async_id.fetch_add(1, std::memory_order::relaxed);
+
+    std::lock_guard<std::mutex> lock(io_uring_lock);
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
 
     AsyncReadRequest* async_read_request;
@@ -325,4 +327,5 @@ private:
   std::atomic<uint64_t> current_async_id{};
   moodycamel::ConcurrentQueue<AsyncReadRequest*> async_read_requests;
   std::vector<std::thread> async_worker_threads;
+  std::mutex io_uring_lock;
 };
