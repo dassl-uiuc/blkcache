@@ -4,12 +4,18 @@
 #include "db.h"
 
 #include "unordered_dense.h"
+#include "concurrentqueue.h"
 
 #include <assert.h>
 #include <list>
 #include <unordered_map>
+#include <liburing.h>
+#undef BLOCK_SIZE
 
-constexpr auto BLOCK_SIZE = 4096u;
+constexpr auto BLOCK_DB_SIZE = 4096u;
+
+#define URING_RING_SIZE 1024
+#define URING_WORKER_THREADS 1
 
 class BlockDB : public DB {
 public:
@@ -63,6 +69,76 @@ public:
     // }
     // fsync(fd);
     free(buf);
+
+    if (block_cache_config.db.block_db.async)
+    {
+      io_uring_queue_init(URING_RING_SIZE, &ring, 0);
+      for (auto i = 0; i < URING_RING_SIZE; i++)
+      {
+        auto async_read_request = new AsyncReadRequest{};
+        auto& iovecs = async_read_request->iovecs;
+        auto& iovec = iovecs.emplace_back();
+        if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
+          perror("posix_memalign");
+          exit(EXIT_FAILURE);
+        }
+        iovec.iov_len = BLOCK_DB_SIZE;
+
+        async_read_requests.enqueue(async_read_request);
+      }
+      for (auto i = 0; i < URING_WORKER_THREADS; i++)
+      {
+        async_worker_threads.emplace_back([this] {
+          while (true)
+          {
+            struct io_uring_cqe *cqe;
+            int ret = io_uring_wait_cqe(&ring, &cqe);
+            if (ret < 0)
+            {
+              panic("io_uring_wait_cqe: {}", ret);
+            }
+
+            auto async_read_request = reinterpret_cast<AsyncReadRequest *>(io_uring_cqe_get_data(cqe));
+            const auto& key = async_read_request->key;
+
+            char* buf = reinterpret_cast<char*>(async_read_request->iovecs[0].iov_base);
+
+            auto buf_offset = 0;
+            auto read_data = [&](auto &v) {
+              memcpy(&v, buf + buf_offset, sizeof(v));
+              buf_offset += sizeof(v);
+            };
+
+            uint32_t avaliable = 0;
+            read_data(avaliable);
+
+            if (!avaliable) {
+              return tl::unexpected{DBError::KeyDoesNotExist};
+            }
+
+            std::size_t key_length;
+            read_data(key_length);
+
+            std::string_view key_expected(buf + buf_offset, buf + buf_offset + key_length);
+            if (key != key_expected) {
+              return tl::unexpected{DBError::KeyIsNotExpected};
+            }
+
+            buf_offset += key_length;
+
+            std::size_t value_length;
+            read_data(value_length);
+
+            std::string value(buf + buf_offset, buf + buf_offset + value_length);
+            buf_offset += value_length;
+
+            async_read_request->callback(value);
+            io_uring_cqe_seen(&ring, cqe);
+          }
+        });
+        async_worker_threads[i].detach();
+      }
+    }
   }
 
   uint64_t hash_index(const std::string &s) {
@@ -96,7 +172,7 @@ public:
 
     const auto &block_size = block_cache_config.db.block_db.block_size;
 
-    char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
+    char buf[BLOCK_DB_SIZE] __attribute__((__aligned__(BLOCK_DB_SIZE))) = {0};
     auto buf_offset = 0;
     auto copy_data = [&](auto v) {
       memcpy(buf + buf_offset, &v, sizeof(v));
@@ -121,7 +197,7 @@ public:
       return DBError::WriteOutOfBounds;
     }
 
-    // pwrite(fd, buf, BLOCK_SIZE, offset);
+    // pwrite(fd, buf, BLOCK_DB_SIZE, offset);
     lseek(fd, offset, SEEK_SET);
     if (write(fd, buf, block_size) == -1) {
       return DBError::WriteFailed;
@@ -141,7 +217,7 @@ public:
     auto index = hash_index(key);
     auto offset = index * block_size;
 
-    char buf[BLOCK_SIZE] __attribute__((__aligned__(BLOCK_SIZE))) = {0};
+    char buf[BLOCK_DB_SIZE] __attribute__((__aligned__(BLOCK_DB_SIZE))) = {0};
     auto result = pread(fd, buf, block_size, offset);
     if (result != block_size) {
       // panic("Read less than result {} < {} at offset {}", result, block_size,
@@ -183,12 +259,46 @@ public:
     return value;
   }
 
+  AsyncID get_async(const std::string &key, AsyncCallback callback) override {
+    if (!block_cache_config.db.block_db.async)
+    {
+      panic("Async not enabled");
+    }
+
+    const auto &block_size = block_cache_config.db.block_db.block_size;
+
+    auto index = hash_index(key);
+    auto offset = index * block_size;
+
+    auto id = current_async_id.fetch_add(1, std::memory_order::relaxed);
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+
+    AsyncReadRequest* async_read_request;
+    while (!async_read_requests.try_dequeue(async_read_request));
+    async_read_request->key = key;
+    async_read_request->callback = std::move(callback);
+    auto& iovecs = async_read_request->iovecs;
+
+    io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
+    io_uring_sqe_set_data(sqe, async_read_request);
+    io_uring_submit(&ring);
+
+    return id;
+  }
+
   DBError remove(const std::string &key) override {
     return DBError::Unimplemented;
   }
 
   std::size_t size() const override { return 0; }
 
+public:
+  struct AsyncReadRequest
+  {
+    std::string key;
+    AsyncCallback callback;
+    std::vector<struct iovec> iovecs;
+  };
 private:
   std::mutex m;
   std::unordered_map<std::string, int> key_to_offset;
@@ -196,4 +306,9 @@ private:
   size_t num_entries = 0;
   size_t storage_size = 0;
   size_t cursor = 0;
+
+  struct io_uring ring;
+  std::atomic<uint64_t> current_async_id{};
+  moodycamel::ConcurrentQueue<AsyncReadRequest*> async_read_requests;
+  std::vector<std::thread> async_worker_threads;
 };

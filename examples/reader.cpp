@@ -31,6 +31,22 @@ int main(int argc, char **argv) {
   info("Got B {}", block_cache.exists_in_cache("B"));
   info("Got C {}", block_cache.exists_in_cache("C"));
 
+
+  config.db.block_db.async = true;
+  block_cache = BlockCache<std::string, std::string>(config);
+  block_cache.put("A", "A");
+  bool received = false;
+  block_cache.get_db()->get_async("A", [&](std::string value) {
+    info("Got value {}", value);
+    received = true;
+  });
+  while (!received)
+  {
+    std::this_thread::yield();
+  }
+  info("Done async");
+  config.db.block_db.async = false;
+
   config.policy_type = "split";
   block_cache = BlockCache<std::string, std::string>(config);
 
@@ -122,7 +138,6 @@ int main(int argc, char **argv) {
   // block_cache.dump_cache_info("ADS");
 
   info("AA {}", block_cache.exists_in_cache("1"));
-
 
   // auto random_cache =
   //     RandomCache<std::string, std::string>::InitializeFromConfigFile(

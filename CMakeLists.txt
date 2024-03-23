@@ -221,7 +221,8 @@ target_link_libraries(block_cache PUBLIC
     concurrentqueue
 
     ibverbs
-    Threads::Threads    
+    Threads::Threads
+    uring
 
     ${TBB_LIBRARIES}
 )

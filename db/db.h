@@ -16,6 +16,9 @@ enum class DBError {
   WriteFailed,
 };
 
+using AsyncID = uint64_t;
+using AsyncCallback = std::function<void(std::string)>;
+
 class DB {
 public:
   virtual ~DB() {}
@@ -28,6 +31,7 @@ public:
   virtual uint8_t *get_pointer_to_data_block(std::string &key) = 0;
   virtual DBError put(const std::string &key, const std::string &value) = 0;
   virtual tl::expected<std::string, DBError> get(const std::string &key) = 0;
+  virtual AsyncID get_async(const std::string &key, AsyncCallback callback) = 0;
   virtual DBError remove(const std::string &key) = 0;
   virtual std::size_t size() const = 0;
 

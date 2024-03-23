@@ -11,6 +11,7 @@ struct BlockDBConfig {
   std::string filename;
   int num_entries;
   int block_size;
+  bool async;
 };
 
 struct DBConfig {
@@ -77,6 +78,7 @@ inline void from_json(const json &j, BlockDBConfig &block_db) {
   j.at("filename").get_to(block_db.filename);
   j.at("num_entries").get_to(block_db.num_entries);
   j.at("block_size").get_to(block_db.block_size);
+  j.at("async").get_to(block_db.async);
 }
 
 inline void from_json(const json &j, DBConfig &db) {
