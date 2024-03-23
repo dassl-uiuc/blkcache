@@ -284,7 +284,10 @@ public:
     struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
 
     AsyncReadRequest* async_read_request;
-    while (!async_read_requests.try_dequeue(async_read_request));
+    while (!async_read_requests.try_dequeue(async_read_request))
+    {
+      panic("No async_read_request available!");
+    }
 
     async_read_request->key = key;
     async_read_request->callback = std::move(callback);
