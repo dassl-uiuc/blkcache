@@ -14,16 +14,39 @@
 
 constexpr auto BLOCK_DB_SIZE = 4096u;
 
+#define IO_URING_SUBMITTING_THREAD
+
 class BlockDB : public DB {
 public:
   virtual ~BlockDB() {
     if (fd) {
       if (block_cache_config.db.block_db.async)
       {
-        io_uring_queue_exit(&ring);
-        for (auto& t : async_worker_threads)
+        for (auto& iouring_worker : iouring_workers)
         {
-          t.join();
+          iouring_worker->stop = true;
+          
+          struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+          io_uring_prep_shutdown(sqe, fd, 0);
+          io_uring_submit(&iouring_worker->ring);
+        }
+        for (auto& iouring_worker : iouring_workers)
+        {
+#ifdef IO_URING_SUBMITTING_THREAD
+          iouring_worker->submitting_thread.join();
+#endif
+          iouring_worker->waiting_thread.join();
+          io_uring_queue_exit(&iouring_worker->ring);
+
+          AsyncReadRequest* async_read_request;
+          while (iouring_worker->async_read_requests.try_dequeue(async_read_request))
+          {
+            for (auto& iovec : async_read_request->iovecs)
+            {
+              free(iovec.iov_base);
+            }
+            delete async_read_request;
+          }
         }
       }
       ::close(fd);
@@ -75,29 +98,79 @@ public:
     // fsync(fd);
     free(buf);
 
+    const auto num_iouring_workers = block_cache_config.db.block_db.io_uring_worker_threads;
+    iouring_workers.reserve(num_iouring_workers);
     if (block_cache_config.db.block_db.async)
     {
-      io_uring_queue_init(block_cache_config.db.block_db.io_uring_ring_size, &ring, 0);
-      for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
+      for (auto i = 0; i < num_iouring_workers; i++)
       {
-        auto async_read_request = new AsyncReadRequest{};
-        auto& iovecs = async_read_request->iovecs;
-        auto& iovec = iovecs.emplace_back();
-        if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
-          perror("posix_memalign");
-          exit(EXIT_FAILURE);
-        }
-        iovec.iov_len = BLOCK_DB_SIZE;
+        auto iouring_worker = std::make_shared<IOURingWorker>();
+        
+        // Init ring
+        io_uring_queue_init(block_cache_config.db.block_db.io_uring_ring_size, &iouring_worker->ring, 0);
 
-        async_read_requests.enqueue(async_read_request);
-      }
-      for (auto i = 0; i < block_cache_config.db.block_db.io_uring_worker_threads; i++)
-      {
-        async_worker_threads.emplace_back([this] {
-          while (true)
+        // Init read requests
+        for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
+        {
+          auto async_read_request = new AsyncReadRequest{};
+          auto& iovecs = async_read_request->iovecs;
+          auto& iovec = iovecs.emplace_back();
+          if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
+            perror("posix_memalign");
+            exit(EXIT_FAILURE);
+          }
+          iovec.iov_len = BLOCK_DB_SIZE;
+
+          iouring_worker->async_read_requests.enqueue(async_read_request);
+        }
+
+        // Submitting thread
+#ifdef IO_URING_SUBMITTING_THREAD
+        iouring_worker->submitting_thread = std::thread([this, iouring_worker] {
+          while (!iouring_worker->stop)
+          {
+            struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+
+            AsyncReadRequest async_submit_read_request;
+            while (!iouring_worker->async_read_submit_requests.try_dequeue(async_submit_read_request))
+            {
+              if (iouring_worker->stop)
+              {
+                break;
+              }
+              std::this_thread::yield();
+            }
+
+            if (iouring_worker->stop)
+            {
+              break;
+            }
+
+            AsyncReadRequest* async_read_request;
+            while (!iouring_worker->async_read_requests.try_dequeue(async_read_request))
+            {
+              panic("No async_read_request available!");
+            }
+
+            async_read_request->key = async_submit_read_request.key;
+            async_read_request->callback = std::move(async_submit_read_request.callback);
+            auto offset = async_submit_read_request.iovecs[0].iov_len;
+            
+            auto& iovecs = async_read_request->iovecs;
+
+            io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
+            io_uring_sqe_set_data(sqe, async_read_request);
+            io_uring_submit(&iouring_worker->ring);            
+          }
+        });
+#endif
+
+        // Waiting thread
+        iouring_worker->waiting_thread = std::thread([this, iouring_worker] {
+          while (!iouring_worker->stop)
           {
             struct io_uring_cqe *cqe;
-            int ret = io_uring_wait_cqe(&ring, &cqe);
+            int ret = io_uring_wait_cqe(&iouring_worker->ring, &cqe);
             if (ret < 0)
             {
               info("io_uring_wait_cqe: {}", ret);
@@ -105,6 +178,11 @@ public:
             }
 
             auto async_read_request = reinterpret_cast<AsyncReadRequest *>(io_uring_cqe_get_data(cqe));
+            if (!async_read_request)
+            {
+              info("[Background disk thread] Waiting thread: async_read_request is null, exiting...");
+              break;
+            }
             const auto& key = async_read_request->key;
 
             char* buf = reinterpret_cast<char*>(async_read_request->iovecs[0].iov_base);
@@ -142,11 +220,13 @@ public:
             async_read_request->callback(value);
 
             // Add back to queue
-            async_read_requests.enqueue(async_read_request);
+            iouring_worker->async_read_requests.enqueue(async_read_request);
 
-            io_uring_cqe_seen(&ring, cqe);
+            io_uring_cqe_seen(&iouring_worker->ring, cqe);
           }
         });
+
+        iouring_workers.emplace_back(iouring_worker);
       }
     }
   }
@@ -281,12 +361,25 @@ public:
     auto offset = index * block_size;
 
     auto id = current_async_id.fetch_add(1, std::memory_order::relaxed);
+    auto& iouring_worker = iouring_workers[id % iouring_workers.size()];
 
-    std::lock_guard<std::mutex> lock(io_uring_lock);
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&ring);
+#ifdef IO_URING_SUBMITTING_THREAD
+    AsyncReadRequest async_read_request;
+
+    async_read_request.key = key;
+    async_read_request.callback = std::move(callback);
+    async_read_request.iovecs.resize(1);
+    auto& iovec = async_read_request.iovecs[0];
+    iovec.iov_len = offset;
+
+    iouring_worker->async_read_submit_requests.enqueue(std::move(async_read_request));    
+#else
+
+    std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
     AsyncReadRequest* async_read_request;
-    while (!async_read_requests.try_dequeue(async_read_request))
+    while (!iouring_worker->async_read_requests.try_dequeue(async_read_request))
     {
       panic("No async_read_request available!");
     }
@@ -297,7 +390,8 @@ public:
 
     io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
     io_uring_sqe_set_data(sqe, async_read_request);
-    io_uring_submit(&ring);
+    io_uring_submit(&iouring_worker->ring);
+#endif
 
     return id;
   }
@@ -315,6 +409,17 @@ public:
     AsyncCallback callback;
     std::vector<struct iovec> iovecs;
   };
+
+  struct IOURingWorker
+  {
+    struct io_uring ring;
+    bool stop = false;
+    std::thread submitting_thread;
+    std::thread waiting_thread;
+    std::mutex io_uring_lock;
+    moodycamel::ConcurrentQueue<AsyncReadRequest*> async_read_requests;
+    moodycamel::ConcurrentQueue<AsyncReadRequest> async_read_submit_requests;
+  };
 private:
   std::mutex m;
   std::unordered_map<std::string, int> key_to_offset;
@@ -323,9 +428,6 @@ private:
   size_t storage_size = 0;
   size_t cursor = 0;
 
-  struct io_uring ring;
   std::atomic<uint64_t> current_async_id{};
-  moodycamel::ConcurrentQueue<AsyncReadRequest*> async_read_requests;
-  std::vector<std::thread> async_worker_threads;
-  std::mutex io_uring_lock;
+  std::vector<std::shared_ptr<IOURingWorker>> iouring_workers;
 };
