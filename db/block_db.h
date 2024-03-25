@@ -14,7 +14,7 @@
 
 constexpr auto BLOCK_DB_SIZE = 4096u;
 
-#define IO_URING_SUBMITTING_THREAD
+// #define IO_URING_SUBMITTING_THREAD
 
 class BlockDB : public DB {
 public:
