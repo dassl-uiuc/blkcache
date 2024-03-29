@@ -5,11 +5,11 @@
 #include <cassert>
 #include <list>
 #include <unordered_map>
+#include <span>
 
 #include "concurrentqueue.h"
 #include "parallel_hashmap/phmap.h"
-#include "thread-safe-lru/scalable-cache.h"
-#include "thread-safe-lru/scalable-cache.h"
+#include "thread_safe_lru/scalable-cache.h"
 
 typedef tstarling::ThreadSafeStringKey String;
 typedef String::HashCompare HashCompare;
@@ -18,14 +18,20 @@ typedef tstarling::ThreadSafeLRUCache<String, std::string, HashCompare> AtomicCa
 
 using Cache = AtomicCache;
 
+using RDMAFriendlyString = tstarling::ThreadSafeStringKey;
+
 template <typename KeyType, typename ValueType>
 class ThreadSafeLRUCache : public CachePolicy<KeyType, ValueType> {
 public:
-  ThreadSafeLRUCache(BlockCacheConfig block_cache_config,
+  ThreadSafeLRUCache(BlockCacheConfig block_cache_config_,
                      std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
-      : CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
+      : block_cache_config(block_cache_config_), CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
                                         cache_size) {
-    secm = std::shared_ptr<Cache>(new Cache(cache_size));
+    if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    {
+      rdma_key_value_storage = std::make_shared<RDMAKeyValueStorage>(block_cache_config);
+    }
+    secm = std::make_shared<Cache>(cache_size, block_cache_config, rdma_key_value_storage);
   }
 
   void put(const KeyType &key, const ValueType &val,
@@ -64,8 +70,12 @@ public:
     }
   }
 
+  RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
+
 private:
+  BlockCacheConfig block_cache_config;
   std::shared_ptr<Cache> secm = nullptr;
+  std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
 };
 
 

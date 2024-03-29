@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
   info("Got {}", block_cache.get("A"));
 
   auto config = block_cache.get_config();
+  auto default_config = config;
   config.policy_type = "random";
   block_cache = BlockCache<std::string, std::string>(config);
 
@@ -45,7 +46,36 @@ int main(int argc, char **argv) {
     std::this_thread::yield();
   }
   info("Done async");
-  config.db.block_db.async = false;
+  config = default_config;
+
+  config.policy_type = "thread_safe_lru";
+  config.baseline.one_sided_rdma_enabled = true;
+  config.baseline.use_cache_indexing = true;
+  config.cache.thread_safe_lru.cache_size = 4;
+  block_cache = BlockCache<std::string, std::string>(config);
+  auto num_ops = 9;
+  for (int i = 0; i < num_ops; i++)
+  {
+    char c = '0' + i;
+    block_cache.put(std::string(1, c), std::string(1, c));
+  }
+
+  for (int i = 0; i < num_ops; i++)
+  {
+    char c = '0' + i;
+    auto cc = std::string(1, c);
+    info("Got {} {}", cc, block_cache.exists_in_cache(cc));
+
+  }
+
+  for (auto i = 0; i < num_ops; i++)
+  {
+    auto cache_index_buffer = block_cache.get_rdma_key_value_storage()->get_cache_index_buffer();
+    const auto& cache_index = cache_index_buffer[i];
+    info("Cache index {} offset {}", i, cache_index.key_value_ptr_offset);
+  }
+
+  config = default_config;
 
   config.policy_type = "split";
   block_cache = BlockCache<std::string, std::string>(config);
@@ -78,11 +108,12 @@ int main(int argc, char **argv) {
   }
 
   block_cache.get_cache()->dump(std::cout);
+  config = default_config;
 
   config.policy_type = "thread_safe_lru";
   config.ingest_block_index = true;
-  config.db.block_db.num_entries = 1024 * 1024;
-  auto total_work = 1024 * 8;
+  config.db.block_db.num_entries = 1024 * 10;
+  auto total_work = 1024 * 1;
   config.cache.thread_safe_lru.cache_size = total_work;
   auto num_threads = 1;
   auto work_per_thread = total_work / num_threads;
@@ -138,6 +169,7 @@ int main(int argc, char **argv) {
   // block_cache.dump_cache_info("ADS");
 
   info("AA {}", block_cache.exists_in_cache("1"));
+  config = default_config;
 
   // auto random_cache =
   //     RandomCache<std::string, std::string>::InitializeFromConfigFile(

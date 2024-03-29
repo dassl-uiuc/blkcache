@@ -1,73 +1,95 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+#include <span>
 
 #include "config.h"
 #include "db/block_db.h"
 #include "utils.h"
 
-// #include "infinity/infinity.h"
+struct KeyValue
+{
+  uint64_t* key;
+  std::span<uint8_t> value;
+};
 
-// constexpr auto DEFAULT_PAGE_SIZE = 4096;
+struct RDMACacheIndex
+{
+  void* key_value_ptr_offset;
+};
 
-// class RdmaManager {
-// public:
-//   RdmaManager(BlockCacheConfig block_cache_config_,
-//               std::shared_ptr<BlockDB> block_db_, std::size_t cache_size_)
-//       : block_cache_config(block_cache_config_), block_db(block_db_),
-//         cache_size(cache_size_) {
-//     // if (this->block_db_block_size != DEFAULT_PAGE_SIZE)
-//     // {
-//     //   panic("Block size needs to be page size {} != {}",
-//     //   this->block_db_block_size, DEFAULT_PAGE_SIZE);
-//     // }
-//     // void* mem{};
-//     // int res = posix_memalign(&mem, DEFAULT_PAGE_SIZE,
-//     // this->block_db_num_entries);
+struct RDMAKeyValueStorage
+{
+  struct Data
+  {
+    uint64_t key;
+    // std::array<uint8_t, > value;
+  };
 
-//     context = std::make_unique<infinity::core::Context>(3);
-//     qp_factory =
-//         std::make_unique<infinity::queues::QueuePairFactory>(context.get());
-//     infinity::queues::QueuePair *qp;
+  RDMAKeyValueStorage(BlockCacheConfig block_cache_config)
+  {
+    auto key_value_buffer_size = 1024 * 1024 * 1024;
+    // auto cache_num_entries = block_cache_config.cache.thread_safe_lru.cache_size;
+    auto storage_num_entries = block_cache_config.db.block_db.num_entries;
 
-//     printf("Creating buffers to read from and write to\n");
-//     shared_memory = std::make_unique<infinity::memory::Buffer>(
-//         context.get(), 64 * 1024 * 1024 * sizeof(char));
-//     infinity::memory::RegionToken *buffer_token =
-//         shared_memory->createRegionToken();
+    key_value_buffer = std::malloc(key_value_buffer_size);
+    cache_index_mbr = std::make_unique<std::pmr::monotonic_buffer_resource>(key_value_buffer, key_value_buffer_size);
+    cache_index_pa = std::make_unique<std::pmr::polymorphic_allocator<uint8_t>>(cache_index_mbr.get());
 
-//     printf("Creating buffers to receive a message\n");
-//     internal_receiving_buffer = std::make_unique<infinity::memory::Buffer>(
-//         context.get(), 128 * sizeof(char));
-//     context->postReceiveBuffer(&*internal_receiving_buffer);
+    auto key_size = sizeof(Data);
+    auto value_size = 100;
 
-//     auto server_thread = [&](auto machine_config) { machine_config.ip; };
+    key_value_size = key_size + value_size;
 
-//     for (const auto &machine_config :
-//          this->block_cache_config.remote_machine_configs) {
-//       servers.push_back(std::thread(server_thread, machine_config));
-//       machine_config.ip;
-//     }
+    // Initialize cache index
+    cache_index_buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(storage_num_entries * sizeof(RDMACacheIndex)));
+    std::memset(cache_index_buffer, 0, storage_num_entries * sizeof(RDMACacheIndex));
+  }
 
-//     auto num_connections =
-//         2 * this->block_cache_config.remote_machine_configs.size();
-//     for (auto i = 0; i < num_connections; i++) {
-//     }
-//   }
+  KeyValue allocate(uint64_t key_index)
+  {
+    // key value
+    auto ptr = cache_index_pa->allocate(key_value_size);
 
-// private:
-//   BlockCacheConfig block_cache_config;
-//   std::shared_ptr<BlockDB> block_db;
-//   std::vector<std::thread> servers;
-//   std::vector<std::thread> clients;
+    // Initialize key
+    uint64_t* key = reinterpret_cast<uint64_t*>(ptr);
+    *key = key_index;
 
-//   std::unique_ptr<infinity::core::Context> context;
-//   std::unique_ptr<infinity::queues::QueuePairFactory> qp_factory;
+    // Initialize in cache index
+    auto key_value_ptr_offset = (uint8_t*)ptr - (uint8_t*)key_value_buffer;
+    info("INSERT {} {}", key_index, key_value_ptr_offset);
+    cache_index_buffer[key_index] = RDMACacheIndex{ (void*)key_value_ptr_offset };
 
-//   std::unique_ptr<infinity::memory::Buffer> shared_memory;
-//   std::unique_ptr<infinity::memory::Buffer> internal_receiving_buffer;
-//   std::size_t cache_size;
-// };
+    // Initialize value
+    std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), key_value_size - sizeof(uint64_t));
+
+    auto key_value = KeyValue{ key, value };
+    return key_value;
+  }
+
+  void deallocate(KeyValue key_value)
+  {
+    info("DEL {} {}", *key_value.key, 0);
+    cache_index_buffer[*key_value.key] = RDMACacheIndex{ 0 };
+    *key_value.key = -1;
+    cache_index_pa->deallocate((uint8_t*)key_value.key, key_value_size);
+  }
+
+  RDMACacheIndex* get_cache_index_buffer()
+  {
+    return cache_index_buffer;
+  }  
+
+private:
+  void* key_value_buffer{};
+  RDMACacheIndex* cache_index_buffer{};
+
+  std::unique_ptr<std::pmr::monotonic_buffer_resource> cache_index_mbr = nullptr;
+  std::unique_ptr<std::pmr::polymorphic_allocator<uint8_t>> cache_index_pa = nullptr;
+
+  size_t key_value_size;
+};
 
 template <typename KeyType, typename ValueType> class CachePolicy {
 public:
@@ -85,6 +107,7 @@ public:
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;
   virtual void dump(std::ostream &os) = 0;
+  virtual RDMAKeyValueStorage* get_rdma_key_value_storage() { return nullptr; }
 
 protected:
   BlockCacheConfig block_cache_config;

@@ -63,6 +63,7 @@ struct RemoteMachineConfig {
 struct Baseline {
   std::string selected;
   bool one_sided_rdma_enabled;
+  bool use_cache_indexing;
 };
 
 struct BlockCacheConfig {
@@ -132,6 +133,7 @@ inline void from_json(const json &j, RemoteMachineConfig &rmc) {
 inline void from_json(const json &j, Baseline &baseline) {
   j.at("selected").get_to(baseline.selected);
   j.at("one_sided_rdma_enabled").get_to(baseline.one_sided_rdma_enabled);
+  j.at("use_cache_indexing").get_to(baseline.use_cache_indexing);
 }
 
 inline void from_json(const json &j, BlockCacheConfig &bcc) {

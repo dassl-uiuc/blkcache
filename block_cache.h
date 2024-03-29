@@ -179,6 +179,10 @@ public:
       return V{};
     }
   }
+
+  RDMAKeyValueStorage* get_rdma_key_value_storage() {
+    return cache->get_rdma_key_value_storage();
+  }
   
   void increment_cache_hit() { cache_hit++; }
   void increment_cache_miss() { cache_miss++; }

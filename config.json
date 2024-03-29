@@ -40,7 +40,8 @@
         "client_aware": {},
         "ldc": {},
         "selected": "random",
-        "one_sided_rdma_enabled": false
+        "one_sided_rdma_enabled": false,
+        "use_cache_indexing": false
     },
     "remote_machines": [
         {
