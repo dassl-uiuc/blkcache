@@ -42,12 +42,15 @@ struct RDMAKeyValueStorage
     cache_index_buffer = allocate_cache_index();
   }
 
-  auto get_allocated_cache_index_size() { return block_cache_config.db.block_db.num_entries; }
+  auto get_allocated_cache_index_size()
+  {
+    auto storage_num_entries = block_cache_config.db.block_db.num_entries; 
+    return storage_num_entries * sizeof(RDMACacheIndex);
+  }
 
   RDMACacheIndex* allocate_cache_index()
   {
-    auto storage_num_entries = get_allocated_cache_index_size();
-    auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(storage_num_entries * sizeof(RDMACacheIndex)));
+    auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(get_allocated_cache_index_size()));
     std::memset(buffer, 0, storage_num_entries * sizeof(RDMACacheIndex));
     return buffer;
   }
