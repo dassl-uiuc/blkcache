@@ -50,8 +50,9 @@ struct RDMAKeyValueStorage
 
   RDMACacheIndex* allocate_cache_index()
   {
-    auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(get_allocated_cache_index_size()));
-    std::memset(buffer, 0, storage_num_entries * sizeof(RDMACacheIndex));
+    auto size = get_allocated_cache_index_size();
+    auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(size));
+    std::memset(buffer, 0, size);
     return buffer;
   }
 
