@@ -32,7 +32,7 @@ struct RDMAKeyValueStorage
   RDMAKeyValueStorage(BlockCacheConfig block_cache_config_) :
     block_cache_config(block_cache_config_)
   {
-    auto key_value_buffer_size = 1024 * 1024 * 1024;
+    key_value_buffer_size = 1024 * 1024 * 1024;
 
     key_value_buffer = std::malloc(key_value_buffer_size);
     cache_index_mbr = std::make_unique<std::pmr::monotonic_buffer_resource>(key_value_buffer, key_value_buffer_size);
@@ -84,6 +84,9 @@ struct RDMAKeyValueStorage
     return cache_index_buffer;
   }
 
+  void* get_key_value_buffer() { return key_value_buffer; }
+  std::size_t get_key_value_buffer_size() { return key_value_buffer_size; }
+
   std::size_t get_key_size() { return sizeof(Data); }
   std::size_t get_value_size() { return 100; }
   std::size_t get_key_value_size() { return get_key_size() + get_value_size(); }
@@ -91,6 +94,7 @@ struct RDMAKeyValueStorage
 private:
   BlockCacheConfig block_cache_config;
   void* key_value_buffer{};
+  uint64_t key_value_buffer_size;
   RDMACacheIndex* cache_index_buffer{};
 
   std::unique_ptr<std::pmr::monotonic_buffer_resource> cache_index_mbr = nullptr;
