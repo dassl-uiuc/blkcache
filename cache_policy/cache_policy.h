@@ -35,8 +35,9 @@ struct RDMAKeyValueStorage
     key_value_buffer_size = 1024 * 1024 * 1024;
 
     key_value_buffer = std::malloc(key_value_buffer_size);
-    cache_index_mbr = std::make_unique<std::pmr::monotonic_buffer_resource>(key_value_buffer, key_value_buffer_size);
-    cache_index_pa = std::make_unique<std::pmr::polymorphic_allocator<uint8_t>>(cache_index_mbr.get());
+    key_value_mbr = std::make_unique<std::pmr::monotonic_buffer_resource>(key_value_buffer, key_value_buffer_size);
+    key_value_upr = std::make_unique<std::pmr::unsynchronized_pool_resource>(key_value_mbr.get());
+    key_value_pa = std::make_unique<std::pmr::polymorphic_allocator<uint8_t>>(key_value_upr.get());
 
     // Initialize cache index
     cache_index_buffer = allocate_cache_index();
@@ -59,7 +60,7 @@ struct RDMAKeyValueStorage
   KeyValue allocate(uint64_t key_index)
   {
     // key value
-    auto ptr = cache_index_pa->allocate(get_key_value_size());
+    auto ptr = key_value_pa->allocate(get_key_value_size());
 
     // Initialize key
     uint64_t* key = reinterpret_cast<uint64_t*>(ptr);
@@ -68,6 +69,7 @@ struct RDMAKeyValueStorage
     // Initialize in cache index
     auto key_value_ptr_offset = (uint8_t*)ptr - (uint8_t*)key_value_buffer;
     cache_index_buffer[key_index] = RDMACacheIndex{ (uintptr_t)key_value_ptr_offset };
+    // info("WRITE BUFFER {} {} {} {}", (void*)cache_index_buffer, key_index, (void*)&cache_index_buffer[key_index], cache_index_buffer[key_index].key_value_ptr_offset);
 
     // Initialize value
     std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
@@ -79,8 +81,9 @@ struct RDMAKeyValueStorage
   void deallocate(KeyValue key_value)
   {
     cache_index_buffer[*key_value.key] = RDMACacheIndex{ 0 };
+    // info("DEALLOC {} {}", (void*)key_value.key, (uint64_t)*key_value.key);
     *key_value.key = -1;
-    cache_index_pa->deallocate((uint8_t*)key_value.key, get_key_value_size());
+    key_value_pa->deallocate((uint8_t*)key_value.key, get_key_value_size());
   }
 
   RDMACacheIndex* get_cache_index_buffer()
@@ -101,8 +104,9 @@ private:
   uint64_t key_value_buffer_size;
   RDMACacheIndex* cache_index_buffer{};
 
-  std::unique_ptr<std::pmr::monotonic_buffer_resource> cache_index_mbr = nullptr;
-  std::unique_ptr<std::pmr::polymorphic_allocator<uint8_t>> cache_index_pa = nullptr;
+  std::unique_ptr<std::pmr::monotonic_buffer_resource> key_value_mbr = nullptr;
+  std::unique_ptr<std::pmr::unsynchronized_pool_resource> key_value_upr = nullptr;
+  std::unique_ptr<std::pmr::polymorphic_allocator<uint8_t>> key_value_pa = nullptr;
 };
 
 template <typename KeyType, typename ValueType> class CachePolicy {
