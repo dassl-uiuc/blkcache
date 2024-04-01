@@ -38,7 +38,7 @@ public:
            bool owning = false) override {
     String skey(key.c_str(), key.length());
     secm->insert(skey, val);
-    for (const auto& callback : CachePolicy<KeyType, ValueType>::write_callbacks) {
+    for (const auto& callback : this->write_callbacks) {
       callback(key, val);
     }
   }
@@ -50,7 +50,7 @@ public:
     if (secm->find(ac, skey)) {
       ret = *ac;
     }
-    for (const auto& callback : CachePolicy<KeyType, ValueType>::read_callbacks) {
+    for (const auto& callback : this->read_callbacks) {
       callback(key);
     }
 
