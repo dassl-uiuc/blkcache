@@ -54,6 +54,7 @@ struct RDMAKeyValueStorage
     auto size = get_allocated_cache_index_size();
     auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(size));
     std::memset(buffer, 0, size);
+    cache_index_buffers.emplace_back(buffer);
     return buffer;
   }
 
@@ -91,6 +92,19 @@ struct RDMAKeyValueStorage
     return cache_index_buffer;
   }
 
+  uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
+  {
+    auto count = 0;
+    for (auto i = 0; i < cache_index_buffers.size(); i++)
+    {
+      if (cache_index_buffers[i][key_index].key_value_ptr_offset != 0)
+      {
+        count++;
+      }
+    }
+    return count;
+  }
+
   void* get_key_value_buffer() { return key_value_buffer; }
   std::size_t get_key_value_buffer_size() { return key_value_buffer_size; }
 
@@ -103,6 +117,7 @@ private:
   void* key_value_buffer{};
   uint64_t key_value_buffer_size;
   RDMACacheIndex* cache_index_buffer{};
+  std::vector<RDMACacheIndex*> cache_index_buffers;
 
   std::unique_ptr<std::pmr::monotonic_buffer_resource> key_value_mbr = nullptr;
   std::unique_ptr<std::pmr::unsynchronized_pool_resource> key_value_upr = nullptr;
