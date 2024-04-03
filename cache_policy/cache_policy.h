@@ -35,6 +35,7 @@ struct RDMAKeyValueStorage
     key_value_buffer_size = 1024 * 1024 * 1024;
 
     key_value_buffer = std::malloc(key_value_buffer_size);
+    std::memset(key_value_buffer, -1, key_value_buffer_size);
     key_value_mbr = std::make_unique<std::pmr::monotonic_buffer_resource>(key_value_buffer, key_value_buffer_size);
     key_value_upr = std::make_unique<std::pmr::unsynchronized_pool_resource>(key_value_mbr.get());
     key_value_pa = std::make_unique<std::pmr::polymorphic_allocator<uint8_t>>(key_value_upr.get());
@@ -53,7 +54,7 @@ struct RDMAKeyValueStorage
   {
     auto size = get_allocated_cache_index_size();
     auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(size));
-    std::memset(buffer, 0, size);
+    std::memset(buffer, -1, size);
     cache_index_buffers.emplace_back(buffer);
     return buffer;
   }
