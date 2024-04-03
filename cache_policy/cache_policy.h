@@ -55,7 +55,6 @@ struct RDMAKeyValueStorage
     auto size = get_allocated_cache_index_size();
     auto buffer = reinterpret_cast<RDMACacheIndex*>(std::malloc(size));
     std::memset(buffer, -1, size);
-    cache_index_buffers.emplace_back(buffer);
     return buffer;
   }
 
@@ -93,6 +92,15 @@ struct RDMAKeyValueStorage
     return cache_index_buffer;
   }
 
+  void set_cache_index(int i, RDMACacheIndex* cache_index)
+  {
+    if (cache_index_buffers.size() < i + 1)
+    {
+      cache_index_buffers.resize(i + 1);
+    }
+    cache_index_buffers[i] = cache_index;
+  }
+
   uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
   {
     auto count = 0;
@@ -106,6 +114,26 @@ struct RDMAKeyValueStorage
     return count;
   }
 
+  RDMACacheIndex* get_cache_index_buffer_for(int i)
+  {
+    return cache_index_buffers[i];
+  }
+
+  std::size_t get_cache_index_size()
+  {
+    return cache_index_buffers.size();
+  }
+
+  void set_my_cache_index(int i)
+  {
+    my_cache_index = i;
+  }
+
+  int get_my_cache_index()
+  {
+    return my_cache_index;
+  }
+
   void* get_key_value_buffer() { return key_value_buffer; }
   std::size_t get_key_value_buffer_size() { return key_value_buffer_size; }
 
@@ -117,6 +145,7 @@ private:
   BlockCacheConfig block_cache_config;
   void* key_value_buffer{};
   uint64_t key_value_buffer_size;
+  int my_cache_index = 0;
   RDMACacheIndex* cache_index_buffer{};
   std::vector<RDMACacheIndex*> cache_index_buffers;
 
