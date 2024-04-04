@@ -194,7 +194,7 @@ public:
     return m_size.load();
   }
   
-  void add_callback_on_eviction(EvictionCallback<TKey, TValue> callback) { eviction_callbacks.emplace_back(callback); }
+  void add_callback_on_eviction(EvictionCallback<std::string, TValue> callback) { eviction_callbacks.emplace_back(callback); }
 
 private:
   /**
@@ -252,7 +252,7 @@ private:
   // RMDA related
   BlockCacheConfig block_cache_config;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage;
-  std::vector<EvictionCallback<TKey, TValue>> eviction_callbacks;
+  std::vector<EvictionCallback<std::string, TValue>> eviction_callbacks;
 };
 
 template <class TKey, class TValue, class THash>
@@ -429,7 +429,7 @@ insert_singleton(ListNode* node) {
     // here at the same time, that could lead to spinning. So we will just evict
     // one extra element per insert() until the overfill is rectified.
     if (m_size.compare_exchange_strong(size, size - 1)) {
-      evict();
+      evict_for_singleton();
     }
   }
   return true;
@@ -513,7 +513,15 @@ evict() {
 
 
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    // If the key is a singleton, evict it <henry call back>
+    for (const auto& callback : eviction_callbacks)
+    {
+      EvictionCallbackData<std::string, TValue> data;
+      data.key = moribund->m_key.c_str();
+      data.value = hashAccessor->second.m_value;
+      data.singleton = moribund->isSingleton;
+      data.forward_count = moribund->forward_count;
+      callback(data);
+    }
   } else {
     if (replicaCount > 1) {
     // If the key is a singleton, evict it <henry call back>
@@ -540,17 +548,6 @@ evict_nchance() {
     // Presumably unreachable
     return;
   }
-
-  for (const auto& callback : eviction_callbacks)
-  {
-    EvictionCallbackData<TKey, TValue> data;
-    data.key = moribund->m_key.c_str();
-    data.value = hashAccessor->second.m_value;
-    data.singleton = moribund->isSingleton;
-    data.forward_count = moribund->forward_count;
-    callback(data);
-  }
-
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {

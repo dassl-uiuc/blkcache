@@ -3,10 +3,10 @@
 template<typename KeyType, typename ValueType>
 struct EvictionCallbackData
 {
-    const KeyType& k;
-    const ValueType& v;
+    KeyType key;
+    ValueType value;
     bool singleton;
-    uint64_t forwarding_count;
+    uint64_t forward_count;
 };
 
 template<typename KeyType, typename ValueType>
