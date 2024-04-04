@@ -12,6 +12,7 @@
 #include "cache_policy/random_policy.h"
 #include "cache_policy/split_policy.h"
 #include "cache_policy/thread_safe_lru_policy.h"
+#include "cache_policy/nchance_policy.h"
 
 #include "db/block_db.h"
 #include "db/db.h"
@@ -124,7 +125,7 @@ public:
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size);
     } else if (block_cache_config.policy_type == "nchance") {
-      cache = std::make_shared<ThreadSafeLRUCache<K, V>>(
+      cache = std::make_shared<ThreadSafeLRUNchanceCache<K, V>>(
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size);
     }else {

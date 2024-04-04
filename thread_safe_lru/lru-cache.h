@@ -18,6 +18,7 @@
 #define incl_tstarling_LRU_CACHE_H
 
 #include "config.h"
+#include "thread_safe_lru/common.h"
 
 #include <atomic>
 #include <mutex>
@@ -190,8 +191,7 @@ public:
     return m_size.load();
   }
 
-  using EvictionCallback = std::function<void(const std::string&, const TValue&)>;
-  void add_callback_on_eviction(EvictionCallback callback) { eviction_callbacks.emplace_back(callback); }
+  void add_callback_on_eviction(EvictionCallback<std::string, TValue> callback) { eviction_callbacks.emplace_back(callback); }
 
 private:
   /**
@@ -242,7 +242,7 @@ private:
   // RMDA related
   BlockCacheConfig block_cache_config;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage;
-  std::vector<EvictionCallback> eviction_callbacks;
+  std::vector<EvictionCallback<std::string, TValue>> eviction_callbacks;
 };
 
 template <class TKey, class TValue, class THash>
@@ -414,13 +414,13 @@ evict() {
     return;
   }
 
-  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  {
-    for (const auto& callback : eviction_callbacks)
-    {
-      callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
-    }
-  }
+  // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  // {
+  //   for (const auto& callback : eviction_callbacks)
+  //   {
+  //     callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
+  //   }
+  // }
 
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)

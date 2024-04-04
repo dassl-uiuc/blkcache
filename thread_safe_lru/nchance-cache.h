@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef incl_tstarling_LRU_CACHE_H
-#define incl_tstarling_LRU_CACHE_H
+#pragma once
 
 #include "config.h"
+#include "thread_safe_lru/common.h"
 
 #include <atomic>
 #include <mutex>
@@ -194,6 +194,7 @@ public:
     return m_size.load();
   }
   
+  void add_callback_on_eviction(EvictionCallback<TKey, TValue> callback) { eviction_callbacks.emplace_back(callback); }
 
 private:
   /**
@@ -212,6 +213,7 @@ private:
    * Evict the least-recently used item from the container. This function does
    * its own locking.
    */
+  void evict_nchance();
   void evict();
   
   void evict_for_singleton();
@@ -250,6 +252,7 @@ private:
   // RMDA related
   BlockCacheConfig block_cache_config;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage;
+  std::vector<EvictionCallback<TKey, TValue>> eviction_callbacks;
 };
 
 template <class TKey, class TValue, class THash>
@@ -401,12 +404,7 @@ insert_singleton(ListNode* node) {
     // The container is at (or over) capacity, so eviction needs to be done.
     // Do not decrement m_size, since that would cause other threads to
     // inappropriately omit eviction during their own inserts.
-    if(block_cache_config.system_type == "nchance" && block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-    {
-      evict_nchance();
-    } else {
-      evict();
-    }
+    evict_nchance();
     evictionDone = true;
   }
 
@@ -542,6 +540,17 @@ evict_nchance() {
     // Presumably unreachable
     return;
   }
+
+  for (const auto& callback : eviction_callbacks)
+  {
+    EvictionCallbackData<TKey, TValue> data;
+    data.key = moribund->m_key.c_str();
+    data.value = hashAccessor->second.m_value;
+    data.singleton = moribund->isSingleton;
+    data.forward_count = moribund->forward_count;
+    callback(data);
+  }
+
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
@@ -637,4 +646,3 @@ ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_singleton_with_lowest
 }
 
 } // namespace tstarling
-#endif

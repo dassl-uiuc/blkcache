@@ -7,6 +7,7 @@
 #include "config.h"
 #include "db/block_db.h"
 #include "utils.h"
+#include "thread_safe_lru/common.h"
 
 // RDMA related, wrong to be put here but oh well
 
@@ -187,10 +188,9 @@ public:
 
   using ReadCallback = std::function<void(const KeyType&)>;
   using WriteCallback = std::function<void(const KeyType&, const ValueType&)>;
-  using EvictionCallback = std::function<void(const KeyType&, const ValueType&)>;
   void add_callback_on_read(ReadCallback callback) { read_callbacks.emplace_back(callback); }
   void add_callback_on_write(WriteCallback callback) { write_callbacks.emplace_back(callback); }
-  void add_callback_on_eviction(EvictionCallback callback) { eviction_callbacks.emplace_back(callback); }
+  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) { eviction_callbacks.emplace_back(callback); }
 
 protected:
   BlockCacheConfig block_cache_config;
@@ -201,5 +201,5 @@ protected:
   uint64_t block_db_block_size;
   std::vector<ReadCallback> read_callbacks;
   std::vector<WriteCallback> write_callbacks;
-  std::vector<EvictionCallback> eviction_callbacks;
+  std::vector<EvictionCallback<KeyType, ValueType>> eviction_callbacks;
 };

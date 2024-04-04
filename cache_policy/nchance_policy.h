@@ -9,22 +9,18 @@
 
 #include "concurrentqueue.h"
 #include "parallel_hashmap/phmap.h"
-#include "thread_safe_lru/scalable-cache.h"
 #include "thread_safe_lru/nchance-cache.h"
 
 typedef tstarling::ThreadSafeStringKey String;
 typedef String::HashCompare HashCompare;
-typedef tstarling::ThreadSafeScalableCache<String, std::string, HashCompare> ScalableCache;
-typedef tstarling::ThreadSafeLRUCache<String, std::string, HashCompare> AtomicCache;
-typedef tstarling::ThreadSafeLRUNchanceCache<String, std::string, HashCompare> NchanceCache;
-
-using Cache = NchanceCache;
 
 using RDMAFriendlyString = tstarling::ThreadSafeStringKey;
 
 template <typename KeyType, typename ValueType>
 class ThreadSafeLRUNchanceCache : public CachePolicy<KeyType, ValueType> {
 public:
+  using Cache = tstarling::ThreadSafeLRUNchanceCache<String, std::string, HashCompare>;
+  
   ThreadSafeLRUNchanceCache(BlockCacheConfig block_cache_config_,
                      std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
       : block_cache_config(block_cache_config_), CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
@@ -76,6 +72,11 @@ public:
     for (auto &skey : skeys) {
       os << skey.data() << "\n";
     }
+  }
+
+  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) {
+    this->eviction_callbacks.emplace_back(callback);
+    secm->add_callback_on_eviction(callback);
   }
 
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
