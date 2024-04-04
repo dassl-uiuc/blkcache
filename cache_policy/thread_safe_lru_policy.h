@@ -76,6 +76,11 @@ public:
     }
   }
 
+  void add_callback_on_eviction(CachePolicy<KeyType, ValueType>::EvictionCallback callback) {
+    this->eviction_callbacks.emplace_back(callback);
+    secm->add_callback_on_eviction(callback);
+  }
+
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
 
 private:

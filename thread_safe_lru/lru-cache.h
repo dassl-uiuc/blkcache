@@ -190,6 +190,9 @@ public:
     return m_size.load();
   }
 
+  using EvictionCallback = std::function<void(const std::string&, const TValue&)>;
+  void add_callback_on_eviction(EvictionCallback callback) { eviction_callbacks.emplace_back(callback); }
+
 private:
   /**
    * Unlink a node from the list. The caller must lock the list mutex while
@@ -239,6 +242,7 @@ private:
   // RMDA related
   BlockCacheConfig block_cache_config;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage;
+  std::vector<EvictionCallback> eviction_callbacks;
 };
 
 template <class TKey, class TValue, class THash>
@@ -409,6 +413,15 @@ evict() {
     // Presumably unreachable
     return;
   }
+
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    for (const auto& callback : eviction_callbacks)
+    {
+      callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
+    }
+  }
+
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
