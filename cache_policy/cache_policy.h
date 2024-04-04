@@ -19,6 +19,8 @@ struct KeyValue
 struct RDMACacheIndex
 {
   uintptr_t key_value_ptr_offset;
+  bool isSingleton;
+  uint64_t forword_count;
 };
 
 struct RDMAKeyValueStorage
@@ -50,6 +52,16 @@ struct RDMAKeyValueStorage
     return storage_num_entries * sizeof(RDMACacheIndex);
   }
 
+  RDMACacheIndex* check_oldest_non_singleton() {
+        for (int i = 0; i < block_cache_config.db.block_db.num_entries; ++i) {
+            RDMACacheIndex& index = cache_index_buffer[i];
+            if (!index.isSingleton && index.forword_count > 0) {
+                return &index;  // Return a pointer to the non-singleton cache index
+            }
+        }
+        return nullptr;  // Return nullptr if no non-singleton entry is found
+    }
+
   RDMACacheIndex* allocate_cache_index()
   {
     auto size = get_allocated_cache_index_size();
@@ -69,9 +81,10 @@ struct RDMAKeyValueStorage
 
     // Initialize in cache index
     auto key_value_ptr_offset = (uint8_t*)ptr - (uint8_t*)key_value_buffer;
-    cache_index_buffer[key_index] = RDMACacheIndex{ (uintptr_t)key_value_ptr_offset };
+    bool isSingleton = false;
+    uint64_t forword_count = 0;
+    cache_index_buffer[key_index] = RDMACacheIndex{ (uintptr_t)key_value_ptr_offset, isSingleton, forword_count};
     // info("WRITE BUFFER {} {} {} {}", (void*)cache_index_buffer, key_index, (void*)&cache_index_buffer[key_index], cache_index_buffer[key_index].key_value_ptr_offset);
-
     // Initialize value
     std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
 
