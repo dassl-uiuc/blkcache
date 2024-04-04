@@ -401,12 +401,7 @@ insert_singleton(ListNode* node) {
     // The container is at (or over) capacity, so eviction needs to be done.
     // Do not decrement m_size, since that would cause other threads to
     // inappropriately omit eviction during their own inserts.
-    if(block_cache_config.system_type == "nchance" && block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-    {
-      evict_nchance();
-    } else {
-      evict();
-    }
+    evict_for_singleton();
     evictionDone = true;
   }
 
@@ -431,7 +426,7 @@ insert_singleton(ListNode* node) {
     // here at the same time, that could lead to spinning. So we will just evict
     // one extra element per insert() until the overfill is rectified.
     if (m_size.compare_exchange_strong(size, size - 1)) {
-      evict();
+      evict_for_singleton();
     }
   }
   return true;
@@ -515,46 +510,16 @@ evict() {
 
 
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    // If the key is a singleton, evict it <henry call back>
-  } else {
-    if (replicaCount > 1) {
-    // If the key is a singleton, evict it <henry call back>
+    for (const auto& callback : eviction_callbacks)
+    {
+      callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
     }
-  }
-}
-
-template <class TKey, class TValue, class THash>
-void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
-evict_nchance() {
-  std::unique_lock<ListMutex> lock(m_listMutex);
-  ListNode* moribund = m_tail.m_prev;
-  ListNode nodeCopy = *moribund;
-  uint64_t replicaCount = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*nodeCopy.key_value.key);
-  if (moribund == &m_head) {
-    // List is empty, can't evict
-    return;
-  }
-  delink(moribund);
-  lock.unlock();
-
-  HashMapAccessor hashAccessor;
-  if (!m_map.find(hashAccessor, moribund->m_key)) {
-    // Presumably unreachable
-    return;
-  }
-  m_map.erase(hashAccessor);
-  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  {
-    rdma_key_value_storage->deallocate(moribund->key_value);
-  }
-  delete moribund;
-
-
-  if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    // If the key is a singleton, evict it <henry call back>
   } else {
     if (replicaCount > 1) {
-    // If the key is a singleton, evict it <henry call back>
+    for (const auto& callback : eviction_callbacks)
+    {
+      callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
+    }
     }
   }
 }
