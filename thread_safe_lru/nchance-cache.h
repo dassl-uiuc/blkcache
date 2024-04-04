@@ -31,7 +31,7 @@
 namespace tstarling {
 
 /**
- * ThreadSafeLRUCache is a thread-safe hashtable with a limited size. When
+ * ThreadSafeLRUNchanceCache is a thread-safe hashtable with a limited size. When
  * it is full, insert() evicts the least recently used item from the cache.
  *
  * The find() operation fills a ConstAccessor object, which is a smart pointer
@@ -54,7 +54,7 @@ namespace tstarling {
  * ThreadSafeScalableCache is recommended instead.
  */
 template <class TKey, class TValue, class THash = tbb::tbb_hash_compare<TKey>>
-class ThreadSafeLRUCache {
+class ThreadSafeLRUNchanceCache {
   /**
    * The LRU list node.
    *
@@ -65,17 +65,19 @@ class ThreadSafeLRUCache {
    */
   struct ListNode {
     ListNode()
-      : m_prev(OutOfListMarker), m_next(nullptr)
+      : m_prev(OutOfListMarker), m_next(nullptr), isSingleton(false), forward_count(-1)
     {}
 
     ListNode(const TKey& key)
-      : m_key(key), m_prev(OutOfListMarker), m_next(nullptr)
+      : m_key(key), m_prev(OutOfListMarker), m_next(nullptr), isSingleton(false), forward_count(-1)
     {}
 
     TKey m_key;
     KeyValue key_value;
     ListNode* m_prev;
     ListNode* m_next;
+    bool isSingleton;
+    int forward_count;
 
     bool isInList() const {
       return m_prev != OutOfListMarker;
@@ -133,19 +135,19 @@ public:
     }
 
   private:
-    friend class ThreadSafeLRUCache;
+    friend class ThreadSafeLRUNchanceCache;
     HashMapConstAccessor m_hashAccessor;
   };
 
   /**
    * Create a container with a given maximum size
    */
-  explicit ThreadSafeLRUCache(size_t maxSize, BlockCacheConfig block_cache_config_, std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage_);
+  explicit ThreadSafeLRUNchanceCache(size_t maxSize, BlockCacheConfig block_cache_config_, std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage_);
 
-  ThreadSafeLRUCache(const ThreadSafeLRUCache& other) = delete;
-  ThreadSafeLRUCache& operator=(const ThreadSafeLRUCache&) = delete;
+  ThreadSafeLRUNchanceCache(const ThreadSafeLRUNchanceCache& other) = delete;
+  ThreadSafeLRUNchanceCache& operator=(const ThreadSafeLRUNchanceCache&) = delete;
 
-  ~ThreadSafeLRUCache() {
+  ~ThreadSafeLRUNchanceCache() {
     clear();
   }
 
@@ -168,6 +170,8 @@ public:
    */
   bool insert(const TKey& key, const TValue& value);
 
+  bool insert_singleton(ListNode* node);
+
   /**
    * Clear the container. NOT THREAD SAFE -- do not use while other threads
    * are accessing the container.
@@ -189,9 +193,7 @@ public:
   size_t size() const {
     return m_size.load();
   }
-
-  using EvictionCallback = std::function<void(const std::string&, const TValue&)>;
-  void add_callback_on_eviction(EvictionCallback callback) { eviction_callbacks.emplace_back(callback); }
+  
 
 private:
   /**
@@ -211,6 +213,12 @@ private:
    * its own locking.
    */
   void evict();
+  
+  void evict_for_singleton();
+
+  ListNode* get_oldest_non_singleton_node();
+  
+  ListNode* get_oldest_singleton_with_lowest_forward_count_node();
 
   /**
    * The maximum number of elements in the container.
@@ -242,16 +250,15 @@ private:
   // RMDA related
   BlockCacheConfig block_cache_config;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage;
-  std::vector<EvictionCallback> eviction_callbacks;
 };
 
 template <class TKey, class TValue, class THash>
-typename ThreadSafeLRUCache<TKey, TValue, THash>::ListNode* const
-ThreadSafeLRUCache<TKey, TValue, THash>::OutOfListMarker = (ListNode*)-1;
+typename ThreadSafeLRUNchanceCache<TKey, TValue, THash>::ListNode* const
+ThreadSafeLRUNchanceCache<TKey, TValue, THash>::OutOfListMarker = (ListNode*)-1;
 
 template <class TKey, class TValue, class THash>
-ThreadSafeLRUCache<TKey, TValue, THash>::
-ThreadSafeLRUCache(size_t maxSize, BlockCacheConfig block_cache_config_, std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage_)
+ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+ThreadSafeLRUNchanceCache(size_t maxSize, BlockCacheConfig block_cache_config_, std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage_)
   : m_maxSize(maxSize), block_cache_config(block_cache_config_), rdma_key_value_storage(rdma_key_value_storage_), m_size(0),
   m_map(std::thread::hardware_concurrency() * 4) // it will automatically grow
 {
@@ -261,7 +268,7 @@ ThreadSafeLRUCache(size_t maxSize, BlockCacheConfig block_cache_config_, std::sh
 }
 
 template <class TKey, class TValue, class THash>
-bool ThreadSafeLRUCache<TKey, TValue, THash>::
+bool ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 find(ConstAccessor& ac, const TKey& key) {
   HashMapConstAccessor& hashAccessor = ac.m_hashAccessor;
   if (!m_map.find(hashAccessor, key)) {
@@ -285,7 +292,7 @@ find(ConstAccessor& ac, const TKey& key) {
 }
 
 template <class TKey, class TValue, class THash>
-bool ThreadSafeLRUCache<TKey, TValue, THash>::
+bool ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 insert(const TKey& key, const TValue& value) {
   // Insert into the CHM
   ListNode* node = nullptr;
@@ -347,7 +354,91 @@ insert(const TKey& key, const TValue& value) {
 }
 
 template <class TKey, class TValue, class THash>
-void ThreadSafeLRUCache<TKey, TValue, THash>::
+bool ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+insert_singleton(ListNode* node) {
+  // Insert into the CHM
+  ListNode* new_node = nullptr;
+  new_node = new ListNode(node->key_value.key);
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    KeyValue key_value = rdma_key_value_storage->allocate(node->key_value.key);
+    std::copy(std::begin(node->key_value.value), std::end(node->key_value.value), std::begin(key_value.value));
+    new_node->key_value = key_value;
+
+    RDMACacheIndex* ci = rdma_key_value_storage->get_cache_index_buffer();
+    if(node->isSingleton){
+      ci[node->key_value.key].singleton = true;
+      ci[node->key_value.key].forward_count = node->forward_count - 1;
+      new_node->isSingleton = true;
+      new_node->forward_count = node->forward_count - 1;
+
+    } else {
+      ci[node->key_value.key].singleton = true;
+      ci[node->key_value.key].forward_count = 2;
+      new_node->isSingleton = true;
+      new_node->forward_count = 2;
+    }
+    node->key_value = key_value;
+  }
+  
+  HashMapAccessor hashAccessor;
+  HashMapValuePair hashMapValue(node->key_value.key, HashMapValue(node->key_value.value, new_node));
+  if (!m_map.insert(hashAccessor, hashMapValue)) {
+    if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    {
+
+      rdma_key_value_storage->deallocate(new_node->key_value);
+    }
+    delete new_node;
+    return false;
+  }
+  hashAccessor.release(); 
+
+  // Evict if necessary, now that we know the hashmap insertion was successful.
+  size_t size = m_size.load();
+  bool evictionDone = false;
+  if (size >= m_maxSize) {
+    // The container is at (or over) capacity, so eviction needs to be done.
+    // Do not decrement m_size, since that would cause other threads to
+    // inappropriately omit eviction during their own inserts.
+    if(block_cache_config.system_type == "nchance" && block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    {
+      evict_nchance();
+    } else {
+      evict();
+    }
+    evictionDone = true;
+  }
+
+  // Note that we have to update the LRU list before we increment m_size, so
+  // that other threads don't attempt to evict list items before they even
+  // exist.
+  std::unique_lock<ListMutex> lock(m_listMutex);
+  pushFront(node);
+  lock.unlock();
+  if (!evictionDone) {
+    size = m_size++;
+  }
+  if (size > m_maxSize) {
+    // It is possible for the size to temporarily exceed the maximum if there is
+    // a heavy insert() load, once only as the cache fills. In this situation,
+    // we have to be careful not to have every thread simultaneously attempt to
+    // evict the extra entries, since we could end up underfilled. Instead we do
+    // a compare-and-exchange to acquire an exclusive right to reduce the size
+    // to a particular value.
+    //
+    // We could continue to evict in a loop, but if there are a lot of threads
+    // here at the same time, that could lead to spinning. So we will just evict
+    // one extra element per insert() until the overfill is rectified.
+    if (m_size.compare_exchange_strong(size, size - 1)) {
+      evict();
+    }
+  }
+  return true;
+}
+
+template <class TKey, class TValue, class THash>
+void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 clear() {
   m_map.clear();
   ListNode* node = m_head.m_next;
@@ -367,7 +458,7 @@ clear() {
 }
 
 template <class TKey, class TValue, class THash>
-void ThreadSafeLRUCache<TKey, TValue, THash>::
+void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 snapshotKeys(std::vector<TKey>& keys) {
   keys.reserve(keys.size() + m_size.load());
   std::lock_guard<ListMutex> lock(m_listMutex);
@@ -377,7 +468,7 @@ snapshotKeys(std::vector<TKey>& keys) {
 }
 
 template <class TKey, class TValue, class THash>
-inline void ThreadSafeLRUCache<TKey, TValue, THash>::
+inline void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 delink(ListNode* node) {
   ListNode* prev = node->m_prev;
   ListNode* next = node->m_next;
@@ -387,7 +478,7 @@ delink(ListNode* node) {
 }
 
 template <class TKey, class TValue, class THash>
-inline void ThreadSafeLRUCache<TKey, TValue, THash>::
+inline void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 pushFront(ListNode* node) {
   ListNode* oldRealHead = m_head.m_next;
   node->m_prev = &m_head;
@@ -397,10 +488,12 @@ pushFront(ListNode* node) {
 }
 
 template <class TKey, class TValue, class THash>
-void ThreadSafeLRUCache<TKey, TValue, THash>::
+void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 evict() {
   std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* moribund = m_tail.m_prev;
+  ListNode nodeCopy = *moribund;
+  uint64_t replicaCount = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*nodeCopy.key_value.key);
   if (moribund == &m_head) {
     // List is empty, can't evict
     return;
@@ -413,23 +506,135 @@ evict() {
     // Presumably unreachable
     return;
   }
-
-  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  {
-    for (const auto& callback : eviction_callbacks)
-    {
-      callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
-    }
-  }
-
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
     rdma_key_value_storage->deallocate(moribund->key_value);
   }
   delete moribund;
+
+
+  if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
+    // If the key is a singleton, evict it <henry call back>
+  } else {
+    if (replicaCount > 1) {
+    // If the key is a singleton, evict it <henry call back>
+    }
+  }
+}
+
+template <class TKey, class TValue, class THash>
+void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+evict_nchance() {
+  std::unique_lock<ListMutex> lock(m_listMutex);
+  ListNode* moribund = m_tail.m_prev;
+  ListNode nodeCopy = *moribund;
+  uint64_t replicaCount = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*nodeCopy.key_value.key);
+  if (moribund == &m_head) {
+    // List is empty, can't evict
+    return;
+  }
+  delink(moribund);
+  lock.unlock();
+
+  HashMapAccessor hashAccessor;
+  if (!m_map.find(hashAccessor, moribund->m_key)) {
+    // Presumably unreachable
+    return;
+  }
+  m_map.erase(hashAccessor);
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    rdma_key_value_storage->deallocate(moribund->key_value);
+  }
+  delete moribund;
+
+
+  if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
+    // If the key is a singleton, evict it <henry call back>
+  } else {
+    if (replicaCount > 1) {
+    // If the key is a singleton, evict it <henry call back>
+    }
+  }
+}
+
+template <class TKey, class TValue, class THash>
+void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+evict_for_singleton() {
+  std::unique_lock<ListMutex> lock(m_listMutex);
+  ListNode* nodeToRemove = nullptr;
+  nodeToRemove = get_oldest_non_singleton_node();
+  if(nodeToRemove == nullptr){
+    nodeToRemove = get_oldest_singleton_with_lowest_forward_count_node();
+  }
+  if(nodeToRemove == nullptr){
+    nodeToRemove = m_tail.m_prev;
+  }
+  if (nodeToRemove == &m_head) {
+    // List is empty, can't evict
+    info("List is empty, can't evict");
+    return;
+  }
+  delink(nodeToRemove);
+  lock.unlock();
+
+  HashMapAccessor hashAccessor;
+  if (!m_map.find(hashAccessor, nodeToRemove->m_key)) {
+    // Presumably unreachable
+    return;
+  }
+  m_map.erase(hashAccessor);
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    rdma_key_value_storage->deallocate(nodeToRemove->key_value);
+  }
+  delete nodeToRemove;
+}
+/*
+  * Get the oldest node with duplicates cached in the system
+*/
+template <class TKey, class TValue, class THash>
+typename ThreadSafeLRUNchanceCache<TKey, TValue, THash>::ListNode*
+ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_non_singleton_node() {
+  uint64_t replica = 0;
+  std::unique_lock<ListMutex> lock(m_listMutex);
+  for (ListNode* node = m_tail.m_prev; node != &m_head; node = node->m_prev) {
+      if (!node->isSingleton) {
+        replica = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(node->key_value.key);
+        if (replica > 1) {
+          return node;
+        }
+      }
+    }
+    return nullptr;
+  }
+
+/*
+  * Get the oldest singleton with lowest forward count node
+*/
+template <class TKey, class TValue, class THash>
+typename ThreadSafeLRUNchanceCache<TKey, TValue, THash>::ListNode*
+ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_singleton_with_lowest_forward_count_node() {
+  std::unique_lock<ListMutex> lock(m_listMutex);
+  ListNode* oldestSingletonNode = nullptr;
+  int lowestForwardCount = 2;
+
+  for (ListNode* node = m_tail.m_prev; node != &m_head; node = node->m_prev) {
+    if (node->isSingleton) {
+      int forwardCount = node->forward_count;
+      if (forwardCount <= lowestForwardCount) {
+        oldestSingletonNode = node;
+        lowestForwardCount = forwardCount--;
+        if(lowestForwardCount < 0){
+          break;
+        }
+      }
+    }
+  }
+
+  return oldestSingletonNode;
 }
 
 } // namespace tstarling
-
 #endif
