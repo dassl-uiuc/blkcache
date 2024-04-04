@@ -553,10 +553,12 @@ evict_for_singleton() {
 template <class TKey, class TValue, class THash>
 typename ThreadSafeLRUCache<TKey, TValue, THash>::ListNode*
 ThreadSafeLRUCache<TKey, TValue, THash>::get_oldest_non_singleton_node() {
+  uint64_t replica = 0;
   std::unique_lock<ListMutex> lock(m_listMutex);
   for (ListNode* node = m_tail.m_prev; node != &m_head; node = node->m_prev) {
       if (!node->isSingleton) {
-        if (rdma_key_value_storage->get_num_cache_index_buffers_containing_key(node->key_value.key) != 1) {
+        replica = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(node->key_value.key);
+        if (replica > 1) {
           return node;
         }
       }
