@@ -549,7 +549,9 @@ evict_for_singleton() {
   }
   delete nodeToRemove;
 }
-
+/*
+  * Get the oldest node with duplicates cached in the system
+*/
 template <class TKey, class TValue, class THash>
 typename ThreadSafeLRUCache<TKey, TValue, THash>::ListNode*
 ThreadSafeLRUCache<TKey, TValue, THash>::get_oldest_non_singleton_node() {
@@ -566,6 +568,9 @@ ThreadSafeLRUCache<TKey, TValue, THash>::get_oldest_non_singleton_node() {
     return nullptr;
   }
 
+/*
+  * Get the oldest singleton with lowest forward count node
+*/
 template <class TKey, class TValue, class THash>
 typename ThreadSafeLRUCache<TKey, TValue, THash>::ListNode*
 ThreadSafeLRUCache<TKey, TValue, THash>::get_oldest_singleton_with_lowest_forward_count_node() {
@@ -589,5 +594,5 @@ ThreadSafeLRUCache<TKey, TValue, THash>::get_oldest_singleton_with_lowest_forwar
   return oldestSingletonNode;
 }
 
-  } // namespace tstarling
+} // namespace tstarling
 #endif
