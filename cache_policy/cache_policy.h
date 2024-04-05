@@ -182,6 +182,7 @@ public:
                    bool owning = false) = 0;
   virtual void* put_nchance(const KeyType &key, const ValueType &val,
            bool owning = false) { panic("Unsupported"); }
+  virtual bool delete_key(const KeyType &key) { panic("Unsupported"); }
   virtual void put_singleton(const KeyType &key, const ValueType &val, 
            bool isSingleton, int forward_count,
            bool owning = false) { panic("Unsupported"); }

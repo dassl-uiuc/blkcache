@@ -48,6 +48,15 @@ public:
     return data;
   }
   
+  bool delete_key(const KeyType &key) override {
+    String skey(key.c_str(), key.length());
+    auto data = secm->delete_node(skey);
+    if(!data){
+      panic("Key not found");
+    }
+    return data;
+  }
+  
   void put_singleton(const KeyType &key, const ValueType &val, 
            bool isSingleton, int forward_count,
            bool owning = false) override{

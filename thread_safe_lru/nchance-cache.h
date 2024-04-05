@@ -172,6 +172,8 @@ public:
 
   bool insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int forward_count);
 
+  bool delete_node(const TKey& key);
+
   /**
    * Clear the container. NOT THREAD SAFE -- do not use while other threads
    * are accessing the container.
@@ -611,6 +613,23 @@ ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_singleton_with_lowest
   }
 
   return oldestSingletonNode;
+}
+
+template <class TKey, class TValue, class THash>
+bool ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+delete_node(const TKey& key) {
+  HashMapAccessor hashAccessor;
+  if (!m_map.find(hashAccessor, key)) {
+    return false;
+  }
+  ListNode* node = hashAccessor->second.m_listNode;
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    rdma_key_value_storage->deallocate(node->key_value);
+  }
+  delete node;
+  m_map.erase(hashAccessor);
+  return true;
 }
 
 } // namespace tstarling
