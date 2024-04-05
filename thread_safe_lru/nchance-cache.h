@@ -520,7 +520,8 @@ evict() {
   {
     rdma_key_value_storage->deallocate(moribund->key_value);
   }
-  auto data = new EvictionCallbackData<std::string, TValue>;
+  EvictionCallbackData<std::string, TValue>* data = nullptr;
+  data = new EvictionCallbackData<std::string, TValue>();
   data->key = data->key = std::to_string(*nodeCopy.key_value.key);
   data->value = std::string(reinterpret_cast<const char*>(nodeCopy.key_value.value.data()), nodeCopy.key_value.value.size());
   data->singleton = nodeCopy.isSingleton;
@@ -530,10 +531,10 @@ evict() {
   delete moribund;
 
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    return data;
+    return static_cast<void*>(data);
   } else {
     if (replicaCount > 1) {
-      return data;
+      return static_cast<void*>(data);
     }
   }
 }
