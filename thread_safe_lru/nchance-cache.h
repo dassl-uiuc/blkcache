@@ -168,9 +168,9 @@ public:
    * will not be updated, and false will be returned. Otherwise, true will be
    * returned.
    */
-  bool insert(const TKey& key, const TValue& value);
+  void* insert(const TKey& key, const TValue& value);
 
-  bool insert_singleton(ListNode* node);
+  bool insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int forward_count);
 
   /**
    * Clear the container. NOT THREAD SAFE -- do not use while other threads
@@ -212,9 +212,8 @@ private:
   /**
    * Evict the least-recently used item from the container. This function does
    * its own locking.
-   */
-  void evict_nchance();
-  void evict();
+   */ 
+  void* evict();
   
   void evict_for_singleton();
 
@@ -295,10 +294,12 @@ find(ConstAccessor& ac, const TKey& key) {
 }
 
 template <class TKey, class TValue, class THash>
-bool ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+void* ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 insert(const TKey& key, const TValue& value) {
   // Insert into the CHM
   ListNode* node = nullptr;
+  void* evict_node = nullptr;
+
   node = new ListNode(key);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
@@ -314,7 +315,7 @@ insert(const TKey& key, const TValue& value) {
       rdma_key_value_storage->deallocate(node->key_value);
     }
     delete node;
-    return false;
+    return evict_node;
   }
   hashAccessor.release();
 
@@ -325,7 +326,7 @@ insert(const TKey& key, const TValue& value) {
     // The container is at (or over) capacity, so eviction needs to be done.
     // Do not decrement m_size, since that would cause other threads to
     // inappropriately omit eviction during their own inserts.
-    evict();
+    evict_node = evict();
     evictionDone = true;
   }
 
@@ -350,49 +351,48 @@ insert(const TKey& key, const TValue& value) {
     // here at the same time, that could lead to spinning. So we will just evict
     // one extra element per insert() until the overfill is rectified.
     if (m_size.compare_exchange_strong(size, size - 1)) {
-      evict();
+      evict_node = evict();
     }
   }
-  return true;
+  return evict_node; 
 }
 
 template <class TKey, class TValue, class THash>
 bool ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
-insert_singleton(ListNode* node) {
+insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int forward_count) {
   // Insert into the CHM
-  ListNode* new_node = nullptr;
-  new_node = new ListNode(node->key_value.key);
+  ListNode* node = nullptr;
+  node = new ListNode(key);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
-    KeyValue key_value = rdma_key_value_storage->allocate(node->key_value.key);
-    std::copy(std::begin(node->key_value.value), std::end(node->key_value.value), std::begin(key_value.value));
-    new_node->key_value = key_value;
+    KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
+    std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
+    node->key_value = key_value;
 
     RDMACacheIndex* ci = rdma_key_value_storage->get_cache_index_buffer();
-    if(node->isSingleton){
-      ci[node->key_value.key].singleton = true;
-      ci[node->key_value.key].forward_count = node->forward_count - 1;
-      new_node->isSingleton = true;
-      new_node->forward_count = node->forward_count - 1;
+    if(isSingleton){
+      ci[std::stoi(key.c_str())].isSingleton = true;
+      ci[std::stoi(key.c_str())].forward_count = forward_count - 1;
+      node->isSingleton = true;
+      node->forward_count = forward_count - 1;
 
     } else {
-      ci[node->key_value.key].singleton = true;
-      ci[node->key_value.key].forward_count = 2;
-      new_node->isSingleton = true;
-      new_node->forward_count = 2;
+      ci[std::stoi(key.c_str())].isSingleton = true;
+      ci[std::stoi(key.c_str())].forward_count = 2;
+      node->isSingleton = true;
+      node->forward_count = 2;
     }
     node->key_value = key_value;
   }
   
   HashMapAccessor hashAccessor;
-  HashMapValuePair hashMapValue(node->key_value.key, HashMapValue(node->key_value.value, new_node));
+  HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
     if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
     {
-
-      rdma_key_value_storage->deallocate(new_node->key_value);
+      rdma_key_value_storage->deallocate(node->key_value);
     }
-    delete new_node;
+    delete node;
     return false;
   }
   hashAccessor.release(); 
@@ -404,7 +404,7 @@ insert_singleton(ListNode* node) {
     // The container is at (or over) capacity, so eviction needs to be done.
     // Do not decrement m_size, since that would cause other threads to
     // inappropriately omit eviction during their own inserts.
-    evict_nchance();
+    evict_for_singleton();
     evictionDone = true;
   }
 
@@ -486,7 +486,7 @@ pushFront(ListNode* node) {
 }
 
 template <class TKey, class TValue, class THash>
-void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
+void* ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 evict() {
   std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* moribund = m_tail.m_prev;
@@ -494,7 +494,7 @@ evict() {
   uint64_t replicaCount = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*nodeCopy.key_value.key);
   if (moribund == &m_head) {
     // List is empty, can't evict
-    return;
+    return nullptr;
   }
   delink(moribund);
   lock.unlock();
@@ -502,65 +502,27 @@ evict() {
   HashMapAccessor hashAccessor;
   if (!m_map.find(hashAccessor, moribund->m_key)) {
     // Presumably unreachable
-    return;
+    return nullptr;
   }
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
     rdma_key_value_storage->deallocate(moribund->key_value);
   }
+  auto data = new EvictionCallbackData<std::string, TValue>;
+  data->key = data->key = std::to_string(*nodeCopy.key_value.key);
+  data->value = std::string(reinterpret_cast<const char*>(nodeCopy.key_value.value.data()), nodeCopy.key_value.value.size());
+  data->singleton = nodeCopy.isSingleton;
+  data->forward_count = nodeCopy.forward_count;
+  data->replica_count = replicaCount;
+  
   delete moribund;
 
-
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    for (const auto& callback : eviction_callbacks)
-    {
-      EvictionCallbackData<std::string, TValue> data;
-      data.key = moribund->m_key.c_str();
-      data.value = hashAccessor->second.m_value;
-      data.singleton = moribund->isSingleton;
-      data.forward_count = moribund->forward_count;
-      callback(data);
-    }
+    return data;
   } else {
     if (replicaCount > 1) {
-    // If the key is a singleton, evict it <henry call back>
-    }
-  }
-}
-
-template <class TKey, class TValue, class THash>
-void ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
-evict_nchance() {
-  std::unique_lock<ListMutex> lock(m_listMutex);
-  ListNode* moribund = m_tail.m_prev;
-  ListNode nodeCopy = *moribund;
-  uint64_t replicaCount = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*nodeCopy.key_value.key);
-  if (moribund == &m_head) {
-    // List is empty, can't evict
-    return;
-  }
-  delink(moribund);
-  lock.unlock();
-
-  HashMapAccessor hashAccessor;
-  if (!m_map.find(hashAccessor, moribund->m_key)) {
-    // Presumably unreachable
-    return;
-  }
-  m_map.erase(hashAccessor);
-  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  {
-    rdma_key_value_storage->deallocate(moribund->key_value);
-  }
-  delete moribund;
-
-
-  if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    // If the key is a singleton, evict it <henry call back>
-  } else {
-    if (replicaCount > 1) {
-    // If the key is a singleton, evict it <henry call back>
+      return data;
     }
   }
 }
@@ -607,7 +569,7 @@ ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_non_singleton_node() 
   std::unique_lock<ListMutex> lock(m_listMutex);
   for (ListNode* node = m_tail.m_prev; node != &m_head; node = node->m_prev) {
       if (!node->isSingleton) {
-        replica = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(node->key_value.key);
+        replica = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*node->key_value.key);
         if (replica > 1) {
           return node;
         }

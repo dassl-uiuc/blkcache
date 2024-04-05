@@ -41,6 +41,20 @@ public:
     }
   }
 
+  void* put_nchance(const KeyType &key, const ValueType &val,
+           bool owning = false) override {
+    String skey(key.c_str(), key.length());
+    auto data = secm->insert(skey, val);
+    return data;
+  }
+  
+  void put_singleton(const KeyType &key, const ValueType &val, 
+           bool isSingleton, int forward_count,
+           bool owning = false) override{
+    String skey(key.c_str(), key.length());
+    secm->insert_singleton(skey, val, isSingleton, forward_count);
+  }
+
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     Cache::ConstAccessor ac;

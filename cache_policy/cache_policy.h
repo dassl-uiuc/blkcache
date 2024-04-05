@@ -21,7 +21,7 @@ struct RDMACacheIndex
 {
   uintptr_t key_value_ptr_offset;
   bool isSingleton;
-  uint64_t forword_count;
+  uint64_t forward_count;
 };
 
 struct RDMAKeyValueStorage
@@ -56,7 +56,7 @@ struct RDMAKeyValueStorage
   RDMACacheIndex* check_oldest_non_singleton() {
         for (int i = 0; i < block_cache_config.db.block_db.num_entries; ++i) {
             RDMACacheIndex& index = cache_index_buffer[i];
-            if (!index.isSingleton && index.forword_count > 0) {
+            if (!index.isSingleton && index.forward_count > 0) {
                 return &index;  // Return a pointer to the non-singleton cache index
             }
         }
@@ -180,6 +180,11 @@ public:
 
   virtual void put(const KeyType &key, const ValueType &val,
                    bool owning = false) = 0;
+  virtual void* put_nchance(const KeyType &key, const ValueType &val,
+           bool owning = false) { panic("Unsupported"); }
+  virtual void put_singleton(const KeyType &key, const ValueType &val, 
+           bool isSingleton, int forward_count,
+           bool owning = false) { panic("Unsupported"); }
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;

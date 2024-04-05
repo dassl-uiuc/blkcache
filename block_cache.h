@@ -230,7 +230,6 @@ private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<BlockDB> db = nullptr;
   std::shared_ptr<DefaultCachePolicy> cache = nullptr;
-
   CopyableAtomic<uint64_t> writes = 0;
   CopyableAtomic<uint64_t> reads = 0;
   CopyableAtomic<uint64_t> cache_hit = 0;
