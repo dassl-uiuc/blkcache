@@ -298,6 +298,7 @@ void* ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 insert(const TKey& key, const TValue& value) {
   // Insert into the CHM
   ListNode* node = nullptr;
+  ListNode* tmp = nullptr;
   void* evict_node = nullptr;
 
   node = new ListNode(key);
@@ -306,18 +307,26 @@ insert(const TKey& key, const TValue& value) {
     KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
+    node->isSingleton = false;
+    node->forward_count = 2;
   }
   HashMapAccessor hashAccessor;
   HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
-    if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-    {
-      rdma_key_value_storage->deallocate(node->key_value);
-    }
-    delete node;
-    return evict_node;
+    tmp = hashAccessor->second.m_listNode;
+    hashAccessor->second = HashMapValue(value, node);
+    // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    // {
+    //   rdma_key_value_storage->deallocate(node->key_value);
+    // }
+    // delete node;
+    // return evict_node;
   }
   hashAccessor.release();
+  if(tmp->isInList()){
+    delink(tmp);
+    delete(tmp);
+  }
 
   // Evict if necessary, now that we know the hashmap insertion was successful.
   size_t size = m_size.load();
