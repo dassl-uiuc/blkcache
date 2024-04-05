@@ -313,7 +313,7 @@ insert(const TKey& key, const TValue& value) {
   HashMapAccessor hashAccessor;
   HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
-    tmp = hashAccessor->second.m_listNode;
+    // tmp = hashAccessor->second.m_listNode;
     hashAccessor->second = HashMapValue(value, node);
     // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
     // {
@@ -323,10 +323,10 @@ insert(const TKey& key, const TValue& value) {
     // return evict_node;
   }
   hashAccessor.release();
-  if(tmp->isInList()){
-    delink(tmp);
-    delete(tmp);
-  }
+  // if(tmp->isInList()){
+  //   delink(tmp);
+  //   delete(tmp);
+  // }
 
   // Evict if necessary, now that we know the hashmap insertion was successful.
   size_t size = m_size.load();
