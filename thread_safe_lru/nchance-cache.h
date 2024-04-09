@@ -579,7 +579,6 @@ template <class TKey, class TValue, class THash>
 typename ThreadSafeLRUNchanceCache<TKey, TValue, THash>::ListNode*
 ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_non_singleton_node() {
   uint64_t replica = 0;
-  std::unique_lock<ListMutex> lock(m_listMutex);
   for (ListNode* node = m_tail.m_prev; node != &m_head; node = node->m_prev) {
       if (!node->isSingleton) {
         replica = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*node->key_value.key);
@@ -597,7 +596,6 @@ ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_non_singleton_node() 
 template <class TKey, class TValue, class THash>
 typename ThreadSafeLRUNchanceCache<TKey, TValue, THash>::ListNode*
 ThreadSafeLRUNchanceCache<TKey, TValue, THash>::get_oldest_singleton_with_lowest_forward_count_node() {
-  std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* oldestSingletonNode = nullptr;
   int lowestForwardCount = 2;
 
