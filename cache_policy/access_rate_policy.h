@@ -59,10 +59,10 @@ public:
 
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
-    uint64_t current_accesses = total_accesses.fetch_add(1) + 1;
+    uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
     if(current_accesses > 10000000){
       std::lock_guard<std::mutex> lock(key_freq_mutex);
-        if (total_accesses.load() >= 10000000) {
+        if (total_accesses.load(std::memory_order_relaxed) >= 10000000) {
           info("Clearing frequency");
           clear_frequency();
           total_accesses.store(0);
