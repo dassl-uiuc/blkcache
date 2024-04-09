@@ -80,11 +80,6 @@ class ThreadSafeLRUAccessRateCache {
     bool isInList() const {
       return m_prev != OutOfListMarker;
     }
-    void set_freq_count_to_zero_for_all_nodes(){
-      for (ListNode* node = m_head.m_next; node != &m_tail; node = node->m_next) {
-        node->freq_count = 0;
-      }
-    }
   };
 
   static ListNode* const OutOfListMarker;
@@ -141,7 +136,6 @@ public:
     friend class ThreadSafeLRUAccessRateCache;
     HashMapConstAccessor m_hashAccessor;
   };
-  uint64_t access_freq = 0;
 
   /**
    * Create a container with a given maximum size
@@ -174,14 +168,6 @@ public:
    */
   bool insert(const TKey& key, const TValue& value);
 
-  bool insert_singleton(const TKey& key, const TValue& value, uint64_t forward_count);
-
-  bool delete_node(const TKey& key);
-
-  u_int64_t get_freq_of_key(const TKey& key);
-  
-  void set_freq_count_to_zero_for_all_nodes();
-
   /**
    * Clear the container. NOT THREAD SAFE -- do not use while other threads
    * are accessing the container.
@@ -203,7 +189,7 @@ public:
   size_t size() const {
     return m_size.load();
   }
-  
+
   void add_callback_on_eviction(EvictionCallback<std::string, TValue> callback) { eviction_callbacks.emplace_back(callback); }
 
 private:
@@ -222,12 +208,8 @@ private:
   /**
    * Evict the least-recently used item from the container. This function does
    * its own locking.
-   */ 
-  bool evict();
-
-  ListNode* get_oldest_non_singleton_node();
-  
-  ListNode* get_oldest_singleton_with_lowest_forward_count_node();
+   */
+  void evict();
 
   /**
    * The maximum number of elements in the container.
@@ -306,8 +288,6 @@ bool ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
 insert(const TKey& key, const TValue& value) {
   // Insert into the CHM
   ListNode* node = nullptr;
-  ListNode* tmp = nullptr;
-
   node = new ListNode(key);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
@@ -318,21 +298,14 @@ insert(const TKey& key, const TValue& value) {
   HashMapAccessor hashAccessor;
   HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
-    // tmp = hashAccessor->second.m_listNode;
-    hashAccessor->second = HashMapValue(value, node);
-    
-    // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-    // {
-    //   rdma_key_value_storage->deallocate(node->key_value);
-    // }
-    // delete node;
-    // return evict_node;
+    if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    {
+      rdma_key_value_storage->deallocate(node->key_value);
+    }
+    delete node;
+    return false;
   }
   hashAccessor.release();
-  // if(tmp->isInList()){
-  //   delink(tmp);
-  //   delete(tmp);
-  // }
 
   // Evict if necessary, now that we know the hashmap insertion was successful.
   size_t size = m_size.load();
@@ -369,13 +342,6 @@ insert(const TKey& key, const TValue& value) {
       evict();
     }
   }
-  return true; 
-}
-
-template <class TKey, class TValue, class THash>
-bool ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
-insert_singleton(const TKey& key, const TValue& value, uint64_t forward_count) {
-  panic("Not implemented");
   return true;
 }
 
@@ -430,14 +396,13 @@ pushFront(ListNode* node) {
 }
 
 template <class TKey, class TValue, class THash>
-bool ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
+void ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
 evict() {
   std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* moribund = m_tail.m_prev;
-  ListNode nodeCopy = *moribund;
   if (moribund == &m_head) {
     // List is empty, can't evict
-    return false;
+    return;
   }
   delink(moribund);
   lock.unlock();
@@ -445,32 +410,23 @@ evict() {
   HashMapAccessor hashAccessor;
   if (!m_map.find(hashAccessor, moribund->m_key)) {
     // Presumably unreachable
-    return false;
+    return;
   }
+
+  // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  // {
+  //   for (const auto& callback : eviction_callbacks)
+  //   {
+  //     callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
+  //   }
+  // }
+
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
     rdma_key_value_storage->deallocate(moribund->key_value);
   }
   delete moribund;
-  return true;
-}
-
-template <class TKey, class TValue, class THash>
-bool ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
-delete_node(const TKey& key) {
-  HashMapAccessor hashAccessor;
-  if (!m_map.find(hashAccessor, key)) {
-    return false;
-  }
-  ListNode* node = hashAccessor->second.m_listNode;
-  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  {
-    rdma_key_value_storage->deallocate(node->key_value);
-  }
-  delete node;
-  m_map.erase(hashAccessor);
-  return true;
 }
 
 } // namespace tstarling

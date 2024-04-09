@@ -55,15 +55,6 @@ public:
     }
     return false;
   }
-  
-  bool delete_key(const KeyType &key) override {
-    String skey(key.c_str(), key.length());
-    auto data = secm->delete_node(skey);
-    if(!data){
-      panic("Key not found");
-    }
-    return data;
-  }
 
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
