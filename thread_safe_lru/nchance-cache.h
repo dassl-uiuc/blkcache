@@ -515,11 +515,6 @@ evict() {
     // Presumably unreachable
     return nullptr;
   }
-  m_map.erase(hashAccessor);
-  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  {
-    rdma_key_value_storage->deallocate(moribund->key_value);
-  }
   EvictionCallbackData<std::string, TValue>* data = nullptr;
   data = new EvictionCallbackData<std::string, TValue>();
   data->key = data->key = std::to_string(*nodeCopy.key_value.key);
@@ -527,6 +522,12 @@ evict() {
   data->singleton = nodeCopy.isSingleton;
   data->forward_count = nodeCopy.forward_count;
   data->replica_count = replicaCount;
+  
+  m_map.erase(hashAccessor);
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    rdma_key_value_storage->deallocate(moribund->key_value);
+  }
   
   delete moribund;
 
