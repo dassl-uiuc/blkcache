@@ -67,6 +67,7 @@ public:
           clear_frequency();
           total_accesses.store(0);
         }
+      std::lock_guard<std::mutex> unlock(key_freq_mutex);
     }
     
     total_accesses++;
@@ -110,18 +111,22 @@ public:
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
 
   uint64_t get_frequency(const KeyType& key) {
-    std::lock_guard<std::mutex> lock(key_freq_mutex);
-    return key_freq[key];
-  }
+    typename tbb::concurrent_hash_map<KeyType, uint64_t>::const_accessor acc;
+    if (key_freq.find(acc, key)) {
+        return acc->second;
+    }
+    return 0;
+}
 
   void update_frequency(const KeyType& key) {
-    std::lock_guard<std::mutex> lock(key_freq_mutex);
-    if (key_freq.find(key) == key_freq.end()) {
-        key_freq.emplace(key, 1);
+    typename tbb::concurrent_hash_map<KeyType, uint64_t>::accessor acc;
+    if (key_freq.find(acc, key)) {
+        acc->second++;
     } else {
-        key_freq[key]++;
+        key_freq.insert(acc, key);
+        acc->second = 1;
     }
-  }
+}
 
   void clear_frequency() {
     // std::lock_guard<std::mutex> lock(key_freq_mutex);
@@ -137,6 +142,6 @@ private:
   uint64_t access_rate;
   uint64_t access_per_itr;
 
-  phmap::flat_hash_map<KeyType, uint64_t, std::hash<KeyType>> key_freq;
+  tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
   std::mutex key_freq_mutex;
 };
