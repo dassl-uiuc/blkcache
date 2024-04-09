@@ -59,13 +59,13 @@ public:
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     
-    if(total_accesses > access_per_itr){
-      clear_frequency();
-      total_accesses = 0;
-    }
+    // if(total_accesses > access_per_itr){
+    //   clear_frequency();
+    //   total_accesses = 0;
+    // }
     
-    total_accesses++;
-    update_frequency(key);
+    // total_accesses++;
+    // update_frequency(key);
     
     Cache::ConstAccessor ac;
     ValueType ret;
