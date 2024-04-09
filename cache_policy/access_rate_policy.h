@@ -6,6 +6,7 @@
 #include <list>
 #include <unordered_map>
 #include <span>
+#include <atomic>
 
 #include "concurrentqueue.h"
 #include "parallel_hashmap/phmap.h"
@@ -58,13 +59,17 @@ public:
 
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
+    uint64_t current_accesses = total_accesses.fetch_add(1) + 1;
+    if(current_accesses > 100000){
+      std::lock_guard<std::mutex> lock(key_freq_mutex);
+        if (total_accesses >= access_per_itr) {
+          info("Clearing frequency");
+          clear_frequency();
+          total_accesses.store(0);
+        }
+    }
     
-    // if(total_accesses > access_per_itr){
-    //   clear_frequency();
-    //   total_accesses = 0;
-    // }
-    
-    // total_accesses++;
+    total_accesses++;
     update_frequency(key);
     
     Cache::ConstAccessor ac;
@@ -128,7 +133,7 @@ private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<Cache> secm = nullptr;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
-  uint64_t total_accesses;
+  std::atomic<uint64_t> total_accesses;
   uint64_t access_rate;
   uint64_t access_per_itr;
 
