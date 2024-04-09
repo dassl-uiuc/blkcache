@@ -59,7 +59,7 @@ public:
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     
-    if(total_accesses > access_per_itr == 0){
+    if(total_accesses > access_per_itr){
       clear_frequency();
       total_accesses = 0;
     }
@@ -105,10 +105,12 @@ public:
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
 
   uint64_t get_frequency(const KeyType& key) {
+    std::lock_guard<std::mutex> lock(key_freq_mutex);
     return key_freq[key];
   }
 
   void update_frequency(const KeyType& key) {
+    std::lock_guard<std::mutex> lock(key_freq_mutex);
     if (key_freq.find(key) == key_freq.end()) {
         key_freq.emplace(key, 1);
     } else {
@@ -117,6 +119,7 @@ public:
   }
 
   void clear_frequency() {
+    std::lock_guard<std::mutex> lock(key_freq_mutex);
     key_freq.clear();
   }
 
@@ -130,4 +133,5 @@ private:
   uint64_t access_per_itr;
 
   phmap::flat_hash_map<KeyType, uint64_t, std::hash<KeyType>> key_freq;
+  std::mutex key_freq_mutex;
 };
