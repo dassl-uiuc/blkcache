@@ -74,6 +74,8 @@ struct BlockCacheConfig {
   DBConfig db;
   CacheConfig cache;
   Baseline baseline;
+  uint64_t access_rate;
+  uint64_t access_per_itr;
   std::vector<RemoteMachineConfig> remote_machine_configs;
 };
 
@@ -145,4 +147,15 @@ inline void from_json(const json &j, BlockCacheConfig &bcc) {
   j.at("cache").get_to(bcc.cache);
   j.at("baseline").get_to(bcc.baseline);
   j.at("remote_machines").get_to(bcc.remote_machine_configs);
+  if (j.contains("access_rate")) {
+        j.at("access_rate").get_to(bcc.access_rate);
+    } else {
+        bcc.access_rate = 1;
+    }
+
+    if (j.contains("access_per_itr")) {
+        j.at("access_per_itr").get_to(bcc.access_per_itr);
+    } else {
+        bcc.access_per_itr = 1000000;
+    }
 }

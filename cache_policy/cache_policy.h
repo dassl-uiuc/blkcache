@@ -186,6 +186,8 @@ public:
   virtual void put_singleton(const KeyType &key, const ValueType &val, 
            bool isSingleton, int forward_count,
            bool owning = false) { panic("Unsupported"); }
+  virtual bool put_access_rate_match(const KeyType &key, const ValueType &val,
+           bool owning = false) { panic("Unsupported"); }
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;

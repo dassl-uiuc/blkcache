@@ -13,6 +13,7 @@
 #include "cache_policy/split_policy.h"
 #include "cache_policy/thread_safe_lru_policy.h"
 #include "cache_policy/nchance_policy.h"
+#include "cache_policy/access_rate_policy.h"
 
 #include "db/block_db.h"
 #include "db/db.h"
@@ -128,7 +129,13 @@ public:
       cache = std::make_shared<ThreadSafeLRUNchanceCache<K, V>>(
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size);
-    }else {
+    } else if (block_cache_config.policy_type == "access_rate") {
+      cache = std::make_shared<ThreadSafeLRUAccessRateCache<K, V>>(
+          block_cache_config, db,
+          block_cache_config.cache.thread_safe_lru.cache_size, 
+          block_cache_config.access_rate,
+          block_cache_config.access_per_itr);
+    } else {
       panic("Block policy type '{}' is not supported",
             block_cache_config.policy_type);
     }
@@ -215,6 +222,7 @@ public:
     j["cache_miss"] = cache_miss.load(std::memory_order_relaxed);
     j["cache_not_compulsory_miss"] = cache_not_compulsory_miss.load(std::memory_order_relaxed);
     j["cache_compulsory_miss"] = cache_compulsory_miss.load(std::memory_order_relaxed);
+    j["cache_freq_addition"] = cache_freq_addition.load(std::memory_order_relaxed);
     return j;
   }
 
@@ -236,4 +244,5 @@ private:
   CopyableAtomic<uint64_t> cache_miss = 0;
   CopyableAtomic<uint64_t> cache_not_compulsory_miss = 0;
   CopyableAtomic<uint64_t> cache_compulsory_miss = 0;
+  CopyableAtomic<uint64_t> cache_freq_addition = 0;
 };
