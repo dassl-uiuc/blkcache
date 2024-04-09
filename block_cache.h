@@ -244,5 +244,6 @@ private:
   CopyableAtomic<uint64_t> cache_miss = 0;
   CopyableAtomic<uint64_t> cache_not_compulsory_miss = 0;
   CopyableAtomic<uint64_t> cache_compulsory_miss = 0;
+public:
   CopyableAtomic<uint64_t> cache_freq_addition = 0;
 };
