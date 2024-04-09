@@ -50,7 +50,8 @@ public:
            bool owning = false) override {
     String skey(key.c_str(), key.length());
     update_frequency(key);
-    if(key_freq[key] >= access_rate){
+
+    if(get_frequency(key) >= access_rate){
       secm->insert(skey, val);
       return true;
     }
