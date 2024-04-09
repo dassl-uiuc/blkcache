@@ -49,7 +49,7 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    if(get_frequency(key) >= 10){
+    if(get_frequency(key) >= 10000){
       info("Access rate match for key: {}", key);
       put(key, val, owning);
       return true;
