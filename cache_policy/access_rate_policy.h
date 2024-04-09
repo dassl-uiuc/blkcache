@@ -65,7 +65,7 @@ public:
     // }
     
     // total_accesses++;
-    // update_frequency(key);
+    update_frequency(key);
     
     Cache::ConstAccessor ac;
     ValueType ret;
