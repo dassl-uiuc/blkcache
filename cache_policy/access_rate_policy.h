@@ -59,7 +59,7 @@ public:
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     
-    if(total_accesses > access_rate == 0){
+    if(total_accesses > access_per_itr == 0){
       clear_frequency();
       total_accesses = 0;
     }
