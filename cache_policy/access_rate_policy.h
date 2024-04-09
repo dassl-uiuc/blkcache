@@ -124,7 +124,7 @@ public:
   }
 
   void clear_frequency() {
-    std::lock_guard<std::mutex> lock(key_freq_mutex);
+    // std::lock_guard<std::mutex> lock(key_freq_mutex);
     key_freq.clear();
   }
 
