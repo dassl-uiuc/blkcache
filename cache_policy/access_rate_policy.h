@@ -48,10 +48,9 @@ public:
 
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
-    String skey(key.c_str(), key.length());
     update_frequency(key);
-
     if(get_frequency(key) >= access_rate){
+      String skey(key.c_str(), key.length());
       secm->insert(skey, val);
       return true;
     }
