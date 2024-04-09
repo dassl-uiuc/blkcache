@@ -62,7 +62,7 @@ public:
     uint64_t current_accesses = total_accesses.fetch_add(1) + 1;
     if(current_accesses > 100000){
       std::lock_guard<std::mutex> lock(key_freq_mutex);
-        if (total_accesses >= 100000) {
+        if (total_accesses.load() >= 100000) {
           info("Clearing frequency");
           clear_frequency();
           total_accesses.store(0);
