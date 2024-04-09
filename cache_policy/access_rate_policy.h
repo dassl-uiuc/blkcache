@@ -49,7 +49,7 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    if(get_frequency(key) >= 100){
+    if(get_frequency(key) >= 10){
       put(key, val, owning);
       // return true;
     }
@@ -59,9 +59,9 @@ public:
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1) + 1;
-    if(current_accesses > 100000){
+    if(current_accesses > 10000000){
       std::lock_guard<std::mutex> lock(key_freq_mutex);
-        if (total_accesses.load() >= 100000) {
+        if (total_accesses.load() >= 10000000) {
           info("Clearing frequency");
           clear_frequency();
           total_accesses.store(0);
