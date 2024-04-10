@@ -316,6 +316,12 @@ insert(const TKey& key, const TValue& value) {
   HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
     // tmp = hashAccessor->second.m_listNode;
+    ListNode* dnode = hashAccessor->second.m_listNode;
+    if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    {
+      rdma_key_value_storage->deallocate(dnode->key_value);
+    }
+    delete dnode;
     hashAccessor->second = HashMapValue(value, node);
     // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
     // {
@@ -544,6 +550,7 @@ evict() {
     }
   }
   info("[NOT Returned] data->key : {} data->value : {} data->singleton : {} data->forward_count : {} data->replica_count : {}", data->key, data->value, data->singleton, data->forward_count, data->replica_count);
+  return nullptr;
 }
 
 template <class TKey, class TValue, class THash>
