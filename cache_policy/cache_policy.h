@@ -95,7 +95,7 @@ struct RDMAKeyValueStorage
 
   void deallocate(KeyValue key_value)
   {
-    cache_index_buffer[*key_value.key] = RDMACacheIndex{ 0 };
+    cache_index_buffer[*key_value.key] = RDMACacheIndex{ -1 };
     // info("DEALLOC {} {}", (void*)key_value.key, (uint64_t)*key_value.key);
     *key_value.key = -1;
     key_value_pa->deallocate((uint8_t*)key_value.key, get_key_value_size());
