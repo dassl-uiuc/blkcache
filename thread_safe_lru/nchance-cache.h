@@ -382,11 +382,11 @@ insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int for
 
     RDMACacheIndex* ci = rdma_key_value_storage->get_cache_index_buffer();
     if(isSingleton){
+      info("Singleton key recieved : {} with forward count : {}", key.c_str(), forward_count);
       ci[std::stoi(key.c_str())].isSingleton = true;
       ci[std::stoi(key.c_str())].forward_count = forward_count - 1;
       node->isSingleton = true;
       node->forward_count = forward_count - 1;
-
     } else {
       ci[std::stoi(key.c_str())].isSingleton = true;
       ci[std::stoi(key.c_str())].forward_count = 2;
@@ -499,12 +499,14 @@ pushFront(ListNode* node) {
 template <class TKey, class TValue, class THash>
 void* ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 evict() {
+  info("[Evicting]");
   std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* moribund = m_tail.m_prev;
   ListNode nodeCopy = *moribund;
   uint64_t replicaCount = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*nodeCopy.key_value.key);
   if (moribund == &m_head) {
     // List is empty, can't evict
+    info("List is empty, can't evict");
     return nullptr;
   }
   delink(moribund);
@@ -513,6 +515,7 @@ evict() {
   HashMapAccessor hashAccessor;
   if (!m_map.find(hashAccessor, moribund->m_key)) {
     // Presumably unreachable
+    info("[NOT Found]");
     return nullptr;
   }
   EvictionCallbackData<std::string, TValue>* data = nullptr;
@@ -532,12 +535,15 @@ evict() {
   delete moribund;
 
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
+    info("[Singleton to forward]");
     return static_cast<void*>(data);
   } else {
     if (replicaCount > 1) {
+      info("[Singleton to forward]");
       return static_cast<void*>(data);
     }
   }
+  info("[NOT Returned] data->key : {} data->value : {} data->singleton : {} data->forward_count : {} data->replica_count : {}", data->key, data->value, data->singleton, data->forward_count, data->replica_count);
 }
 
 template <class TKey, class TValue, class THash>
@@ -563,6 +569,7 @@ evict_for_singleton() {
   HashMapAccessor hashAccessor;
   if (!m_map.find(hashAccessor, nodeToRemove->m_key)) {
     // Presumably unreachable
+    info("[NOT Found]");
     return;
   }
   m_map.erase(hashAccessor);
