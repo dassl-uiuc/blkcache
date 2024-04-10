@@ -111,21 +111,31 @@ public:
 
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
 
+  using ConstFrequencyAccessor = tbb::concurrent_hash_map<KeyType, uint64_t>::const_accessor;
+  using FrequencyAccessor = tbb::concurrent_hash_map<KeyType, uint64_t>::accessor;
+
   uint64_t get_frequency(const KeyType& key) {
-    typename tbb::concurrent_hash_map<KeyType, uint64_t>::const_accessor acc;
+    ConstFrequencyAccessor acc;
     if (key_freq.find(acc, key)) {
-        return acc->second;
+      return acc->second;
     }
     return 0;
 }
 
   void update_frequency(const KeyType& key) {
-    typename tbb::concurrent_hash_map<KeyType, uint64_t>::accessor acc;
-    if (key_freq.find(acc, key)) {
+    bool found = false;
+    {
+      FrequencyAccessor acc;
+      if (key_freq.find(acc, key)) {
         acc->second++;
-    } else {
-        key_freq.insert(acc, key);
-        acc->second = 1;
+        found = true;
+      }
+    }
+    if (!found)
+    {
+      FrequencyAccessor acc;
+      key_freq.insert(acc, key);
+      acc->second = 1;
     }
 }
 
