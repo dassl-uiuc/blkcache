@@ -45,6 +45,9 @@ public:
            bool owning = false) override {
     String skey(key.c_str(), key.length());
     auto data = secm->insert(skey, val);
+    for (const auto& callback : this->write_callbacks) {
+      callback(key, val);
+    }
     return data;
   }
   
