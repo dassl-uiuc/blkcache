@@ -35,6 +35,7 @@ public:
     access_rate = access_rate_;
     access_per_itr = access_per_itr_;
     total_accesses = 0;
+    info("Access rate: {} and access per itr: {}", access_rate, access_per_itr);
   }
 
   void put(const KeyType &key, const ValueType &val,
@@ -49,7 +50,7 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    if(get_frequency(key) >= 25){
+    if(get_frequency(key) >= access_rate){
       info("Access rate match for key: {}", key);
       put(key, val, owning);
       return true;
@@ -60,9 +61,9 @@ public:
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
-    if(current_accesses > 1000000){
+    if(current_accesses > access_per_itr){
       std::lock_guard<std::mutex> lock(key_freq_mutex);
-        if (total_accesses.load(std::memory_order_relaxed) >= 10000000) {
+        if (total_accesses.load(std::memory_order_relaxed) >= access_per_itr) {
           info("Clearing frequency");
           clear_frequency();
           total_accesses.store(0);
