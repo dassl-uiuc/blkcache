@@ -62,7 +62,6 @@ public:
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
     if(current_accesses > access_per_itr){
-      std::lock_guard<std::mutex> lock(key_freq_mutex);
         if (total_accesses.load(std::memory_order_relaxed) >= access_per_itr) {
           info("Clearing frequency");
           clear_frequency();
@@ -122,6 +121,7 @@ public:
 }
 
   void update_frequency(const KeyType& key) {
+    wait_on_isclearing();
     bool found = false;
     {
       FrequencyAccessor acc;
@@ -139,8 +139,25 @@ public:
 }
 
   void clear_frequency() {
-    // std::lock_guard<std::mutex> lock(key_freq_mutex);
-    key_freq.clear();
+    is_clearing.store(true);
+    std::vector<KeyType> keys;
+
+    // Iterate over the map to collect keys
+    for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
+        keys.push_back(it->first);
+    }
+
+    // Remove each key collected
+    for (auto& key : keys) {
+        key_freq.erase(key);
+    }
+    is_clearing.store(false);
+  }
+
+  void wait_on_isclearing() {
+    while (is_clearing.load()) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
   }
 
 
@@ -149,6 +166,7 @@ private:
   std::shared_ptr<Cache> secm = nullptr;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
   std::atomic<uint64_t> total_accesses;
+  std::atomic<bool> is_clearing;
   uint64_t access_rate;
   uint64_t access_per_itr;
 
