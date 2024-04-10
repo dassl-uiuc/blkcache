@@ -68,7 +68,6 @@ public:
           clear_frequency();
           total_accesses.store(0);
         }
-      std::lock_guard<std::mutex> unlock(key_freq_mutex);
     }
     
     total_accesses++;
