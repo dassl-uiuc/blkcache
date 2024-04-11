@@ -532,6 +532,11 @@ evict() {
   data->forward_count = nodeCopy.forward_count;
   data->replica_count = replicaCount;
   
+  for (const auto& callback : eviction_callbacks)
+  {
+    callback(*data);
+  }
+
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
@@ -579,6 +584,12 @@ evict_for_singleton() {
     info("[NOT Found]");
     return;
   }
+
+  for (const auto& callback : eviction_callbacks)
+  {
+    callback({nodeToRemove->m_key.c_str(), hashAccessor->second.m_value});
+  }
+
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
