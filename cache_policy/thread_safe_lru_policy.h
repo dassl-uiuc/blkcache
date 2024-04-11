@@ -76,7 +76,7 @@ public:
     }
   }
 
-  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) {
+  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) override {
     this->eviction_callbacks.emplace_back(callback);
     secm->add_callback_on_eviction(callback);
   }

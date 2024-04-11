@@ -198,7 +198,7 @@ public:
   using WriteCallback = std::function<void(const KeyType&, const ValueType&)>;
   void add_callback_on_read(ReadCallback callback) { read_callbacks.emplace_back(callback); }
   void add_callback_on_write(WriteCallback callback) { write_callbacks.emplace_back(callback); }
-  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) { eviction_callbacks.emplace_back(callback); }
+  virtual void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) { eviction_callbacks.emplace_back(callback); }
 
 protected:
   BlockCacheConfig block_cache_config;
