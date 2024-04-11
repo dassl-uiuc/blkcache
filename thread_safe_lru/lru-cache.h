@@ -414,13 +414,13 @@ evict() {
     return;
   }
 
-  // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-  // {
-  //   for (const auto& callback : eviction_callbacks)
-  //   {
-  //     callback(moribund->m_key.c_str(), hashAccessor->second.m_value);
-  //   }
-  // }
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    for (const auto& callback : eviction_callbacks)
+    {
+      callback({moribund->m_key.c_str(), hashAccessor->second.m_value});
+    }
+  }
 
   m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
