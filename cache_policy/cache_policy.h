@@ -49,7 +49,7 @@ struct RDMAKeyValueStorage
 
   auto get_allocated_cache_index_size()
   {
-    auto storage_num_entries = block_cache_config.db.block_db.num_entries; 
+    auto storage_num_entries = block_cache_config.db.block_db.num_entries + 1; 
     return storage_num_entries * sizeof(RDMACacheIndex);
   }
 
