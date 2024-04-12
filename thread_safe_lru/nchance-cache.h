@@ -382,20 +382,22 @@ insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int for
   node = new ListNode(key);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
-    KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
+    auto key_index = std::stoi(key.c_str());
+    KeyValue key_value = rdma_key_value_storage->allocate(key_index);
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
 
     RDMACacheIndex* ci = rdma_key_value_storage->get_cache_index_buffer();
     if(isSingleton){
       info("Singleton key recieved : {} with forward count : {}", key.c_str(), forward_count);
-      ci[std::stoi(key.c_str())].isSingleton = true;
-      ci[std::stoi(key.c_str())].forward_count = forward_count - 1;
+      auto new_forward_count = std::min(forward_count - 1, 0);
+      ci[key_index].isSingleton = true;
+      ci[key_index].forward_count = new_forward_count;
       node->isSingleton = true;
-      node->forward_count = forward_count - 1;
+      node->forward_count = new_forward_count;
     } else {
-      ci[std::stoi(key.c_str())].isSingleton = true;
-      ci[std::stoi(key.c_str())].forward_count = 2;
+      ci[key_index].isSingleton = true;
+      ci[key_index].forward_count = 2;
       node->isSingleton = true;
       node->forward_count = 2;
     }
