@@ -531,7 +531,7 @@ pushFront(ListNode* node) {
 template <class TKey, class TValue, class THash>
 void* ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
 evict() {
-  info("[Evicting] {}", eviction_callbacks.size());
+  // info("[Evicting] {}", eviction_callbacks.size());
   std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* moribund = m_tail.m_prev;
   ListNode nodeCopy = *moribund;
