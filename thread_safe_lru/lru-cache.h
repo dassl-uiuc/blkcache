@@ -298,11 +298,15 @@ insert(const TKey& key, const TValue& value) {
     //   rdma_key_value_storage->deallocate(node->key_value);
     // }
 
-    std::unique_lock<ListMutex> lock(m_listMutex);
-    auto orig_node = hashAccessor->second.m_listNode;
-    delink(orig_node);
-    pushFront(orig_node);
-    lock.unlock();
+    std::unique_lock<ListMutex> lock(m_listMutex, std::try_to_lock);
+    if (lock) {
+      ListNode* orig_node = hashAccessor->second.m_listNode;
+      if (orig_node->isInList()) {
+        delink(orig_node);
+        pushFront(orig_node);
+      }
+      lock.unlock();
+    }
     
     delete node;
     return false;
