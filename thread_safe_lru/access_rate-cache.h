@@ -289,23 +289,31 @@ insert(const TKey& key, const TValue& value) {
   // Insert into the CHM
   ListNode* node = nullptr;
   node = new ListNode(key);
+  HashMapAccessor hashAccessor;
+  HashMapValuePair hashMapValue(key, HashMapValue(value, node));
+  if (!m_map.insert(hashAccessor, hashMapValue)) {
+    // if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+    // {
+    //   rdma_key_value_storage->deallocate(node->key_value);
+    // }
+
+    std::unique_lock<ListMutex> lock(m_listMutex);
+    auto orig_node = hashAccessor->second.m_listNode;
+    delink(orig_node);
+    pushFront(orig_node);
+    lock.unlock();
+    
+    delete node;
+    return false;
+  }
+  hashAccessor.release();
+
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
     KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
   }
-  HashMapAccessor hashAccessor;
-  HashMapValuePair hashMapValue(key, HashMapValue(value, node));
-  if (!m_map.insert(hashAccessor, hashMapValue)) {
-    if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
-    {
-      rdma_key_value_storage->deallocate(node->key_value);
-    }
-    delete node;
-    return false;
-  }
-  hashAccessor.release();
 
   // Evict if necessary, now that we know the hashmap insertion was successful.
   size_t size = m_size.load();

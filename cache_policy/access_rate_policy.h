@@ -51,7 +51,7 @@ public:
            bool owning = false) override {
     update_frequency(key);
     if(get_frequency(key) >= access_rate){
-      info("Access rate match for key: {}", key);
+      // info("Access rate match for key: {}", key);
       put(key, val, owning);
       return true;
     }
