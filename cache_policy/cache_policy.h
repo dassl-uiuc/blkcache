@@ -9,6 +9,11 @@
 #include "utils.h"
 
 // RDMA related, wrong to be put here but oh well
+// RDMA related, wrong to be put here but oh well
+#define CACHE_INDEX_INVALID (uintptr_t)-1
+#define KEY_VALUE_PTR_INVALID -1
+// inline static RDMACacheIndex InvalidRDMACacheIndex = RDMACacheIndex{ CACHE_INDEX_INVALID, false, 0 };
+#define InvalidRDMACacheIndex RDMACacheIndex{ CACHE_INDEX_INVALID, false, 0 }
 
 struct KeyValue
 {
