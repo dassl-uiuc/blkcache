@@ -424,7 +424,7 @@ insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int for
 
     RDMACacheIndex* ci = rdma_key_value_storage->get_cache_index_buffer();
     if(isSingleton){
-      info("Singleton key recieved : {} with forward count : {}", key.c_str(), forward_count);
+      // info("Singleton key recieved : {} with forward count : {}", key.c_str(), forward_count);
       auto new_forward_count = std::min(forward_count - 1, 0);
       ci[key_index].isSingleton = true;
       ci[key_index].forward_count = new_forward_count;
@@ -572,11 +572,11 @@ evict() {
   delete moribund;
 
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    info("[Singleton to forward]");
+    // info("[Singleton to forward]");
     return static_cast<void*>(data);
   } else {
     if (replicaCount > 1) {
-      info("[Singleton to forward]");
+      // info("[Singleton to forward]");
       return static_cast<void*>(data);
     }
   }
