@@ -85,10 +85,14 @@ struct RDMAKeyValueStorage
     *key = key_index;
 
     // Initialize in cache index
-    auto key_value_ptr_offset = (uint8_t*)ptr - (uint8_t*)key_value_buffer;
+    auto key_value_ptr_offset = (uintptr_t)((uint8_t*)ptr - (uint8_t*)key_value_buffer);
     bool isSingleton = false;
     uint64_t forword_count = 0;
-    cache_index_buffer[key_index] = RDMACacheIndex{ (uintptr_t)key_value_ptr_offset, isSingleton, forword_count};
+    if (key_value_ptr_offset > key_value_buffer_size)
+    {
+      panic("[RDMACacheIndex] Out of memory {} > {}!", key_value_ptr_offset > key_value_buffer_size);
+    }
+    cache_index_buffer[key_index] = RDMACacheIndex{ key_value_ptr_offset, isSingleton, forword_count};
     // info("WRITE BUFFER {} {} {} {}", (void*)cache_index_buffer, key_index, (void*)&cache_index_buffer[key_index], cache_index_buffer[key_index].key_value_ptr_offset);
     // Initialize value
     std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
