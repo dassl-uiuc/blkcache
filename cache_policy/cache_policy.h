@@ -39,7 +39,8 @@ struct RDMAKeyValueStorage
   RDMAKeyValueStorage(BlockCacheConfig block_cache_config_) :
     block_cache_config(block_cache_config_)
   {
-    key_value_buffer_size = 1024 * 1024 * 1024;
+    // key_value_buffer_size = 1024 * 1024 * 1024;
+    key_value_buffer_size = block_cache_config.db.block_db.num_entries * get_key_value_size();
 
     key_value_buffer = std::malloc(key_value_buffer_size);
     std::memset(key_value_buffer, KEY_VALUE_PTR_INVALID, key_value_buffer_size);
@@ -78,7 +79,8 @@ struct RDMAKeyValueStorage
   KeyValue allocate(uint64_t key_index)
   {
     // key value
-    auto ptr = key_value_pa->allocate(get_key_value_size());
+    // auto ptr = key_value_pa->allocate(get_key_value_size());
+    auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
 
     // Initialize key
     uint64_t* key = reinterpret_cast<uint64_t*>(ptr);
@@ -105,8 +107,11 @@ struct RDMAKeyValueStorage
   {
     cache_index_buffer[*key_value.key] = InvalidRDMACacheIndex;
     // info("DEALLOC {} {}", (void*)key_value.key, (uint64_t)*key_value.key);
+    // key_value_pa->deallocate((uint8_t*)key_value.key, get_key_value_size());
+    auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * *key_value.key);
+    memset(ptr, CACHE_INDEX_INVALID, get_key_value_size());
+
     *key_value.key = KEY_VALUE_PTR_INVALID;
-    key_value_pa->deallocate((uint8_t*)key_value.key, get_key_value_size());
   }
 
   RDMACacheIndex* get_cache_index_buffer()
