@@ -90,7 +90,7 @@ struct RDMAKeyValueStorage
     uint64_t forword_count = 0;
     if (key_value_ptr_offset > key_value_buffer_size)
     {
-      panic("[RDMACacheIndex] Out of memory {} > {}!", key_value_ptr_offset > key_value_buffer_size);
+      info("[RDMACacheIndex] Out of memory {} > {}!", (uint64_t)key_value_ptr_offset > key_value_buffer_size);
     }
     cache_index_buffer[key_index] = RDMACacheIndex{ key_value_ptr_offset, isSingleton, forword_count};
     // info("WRITE BUFFER {} {} {} {}", (void*)cache_index_buffer, key_index, (void*)&cache_index_buffer[key_index], cache_index_buffer[key_index].key_value_ptr_offset);
