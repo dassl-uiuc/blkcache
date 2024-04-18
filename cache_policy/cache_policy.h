@@ -33,7 +33,6 @@ struct RDMAKeyValueStorage
   struct Data
   {
     uint64_t key;
-    // std::array<uint8_t, > value;
   };
 
   RDMAKeyValueStorage(BlockCacheConfig block_cache_config_) :
@@ -126,6 +125,16 @@ struct RDMAKeyValueStorage
       cache_index_buffers.resize(i + 1);
     }
     cache_index_buffers[i] = cache_index;
+  }
+  
+  KeyValue get_key_value(uint64_t key_index)
+  {
+    auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
+    auto* key = (uint64_t*)ptr;
+    std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
+
+    auto key_value = KeyValue{ key, value };
+    return key_value;
   }
 
   uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
