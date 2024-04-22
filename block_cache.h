@@ -99,24 +99,36 @@ public:
       auto nonowning_cache_size =
           static_cast<uint64_t>(block_cache_config.cache.split.cache_size *
                                 block_cache_config.cache.split.nonowning_ratio);
-      if (block_cache_config.cache.split.owning_cache_type == "lru") {
-        owning_cache = make_lru_cache(owning_cache_size);
-      } else if (block_cache_config.cache.split.owning_cache_type == "random") {
-        owning_cache = make_random_cache(owning_cache_size);
-      } else {
-        panic("Read cache type '{}' is not supported",
-              block_cache_config.cache.split.owning_cache_type);
-      }
 
-      if (block_cache_config.cache.split.nonowning_cache_type == "lru") {
-        nonowning_cache = make_lru_cache(nonowning_cache_size);
-      } else if (block_cache_config.cache.split.nonowning_cache_type ==
-                 "random") {
-        nonowning_cache = make_random_cache(nonowning_cache_size);
-      } else {
-        panic("Write cache type '{}' is not supported",
-              block_cache_config.cache.split.nonowning_cache_type);
-      }
+      auto make_cache = [&](std::string_view cache_type, auto cache_size)
+      {
+        std::shared_ptr<DefaultCachePolicy> new_cache;
+        if (cache_type == "lru") {
+          new_cache = make_lru_cache(cache_size);
+        } else if (cache_type == "random") {
+          new_cache = make_random_cache(cache_size);
+        } else if (cache_type == "thread_safe_lru") {
+          new_cache = std::make_shared<ThreadSafeLRUCache<K, V>>(
+              block_cache_config, db, cache_size);
+        } else if (cache_type == "nchance") {
+          new_cache = std::make_shared<ThreadSafeLRUNchanceCache<K, V>>(
+              block_cache_config, db, cache_size);
+        } else if (cache_type == "access_rate") {
+          new_cache = std::make_shared<ThreadSafeLRUAccessRateCache<K, V>>(
+              block_cache_config, db,
+              cache_size, 
+              block_cache_config.access_rate,
+              block_cache_config.access_per_itr);
+        } else {
+          panic("Read cache type '{}' is not supported",
+                cache_type);
+        }
+
+        return new_cache;        
+      };
+
+      owning_cache = make_cache(block_cache_config.cache.split.owning_cache_type, owning_cache_size);
+      nonowning_cache = make_cache(block_cache_config.cache.split.nonowning_cache_type, nonowning_cache_size);
 
       cache = std::make_shared<SplitCache<K, V>>(
           block_cache_config, db, block_cache_config.cache.split.cache_size,
