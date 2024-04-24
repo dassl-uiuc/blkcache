@@ -246,6 +246,17 @@ public:
     ofs << dump_cache_info_as_json().dump(2);
   }
 
+  void reset_cache_info()
+  {
+    writes = 0;
+    reads = 0;
+    cache_hit = 0;
+    cache_miss = 0;
+    cache_not_compulsory_miss = 0;
+    cache_compulsory_miss = 0;
+    cache_freq_addition = 0;
+  }
+
 private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<BlockDB> db = nullptr;
