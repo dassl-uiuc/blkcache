@@ -58,6 +58,7 @@ struct RemoteMachineConfig {
   std::string ip;
   uint64_t port;
   bool server;
+  bool shared_log;
 };
 
 struct Baseline {
@@ -130,6 +131,9 @@ inline void from_json(const json &j, RemoteMachineConfig &rmc) {
   j.at("ip").get_to(rmc.ip);
   j.at("port").get_to(rmc.port);
   j.at("server").get_to(rmc.server);
+  if (j.contains("shared_log")) {
+    j.at("shared_log").get_to(bcc.shared_log);
+  }
 }
 
 inline void from_json(const json &j, Baseline &baseline) {
