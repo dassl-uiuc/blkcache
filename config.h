@@ -78,6 +78,7 @@ struct BlockCacheConfig {
   uint64_t access_rate;
   uint64_t access_per_itr;
   std::vector<RemoteMachineConfig> remote_machine_configs;
+  RemoteMachineConfig shared_log_remote_machine_config;
 };
 
 inline void from_json(const json &j, BlockDBConfig &block_db) {
@@ -132,7 +133,7 @@ inline void from_json(const json &j, RemoteMachineConfig &rmc) {
   j.at("port").get_to(rmc.port);
   j.at("server").get_to(rmc.server);
   if (j.contains("shared_log")) {
-    j.at("shared_log").get_to(bcc.shared_log);
+    j.at("shared_log").get_to(rmc.shared_log);
   }
 }
 
