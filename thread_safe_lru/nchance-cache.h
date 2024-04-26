@@ -577,7 +577,7 @@ evict() {
     // info("[Singleton to forward]");
     return static_cast<void*>(data);
   } else {
-    if (replicaCount > 1) {
+    if (replicaCount <= 1) {
       // info("[Singleton to forward]");
       return static_cast<void*>(data);
     }
