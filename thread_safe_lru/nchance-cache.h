@@ -280,9 +280,11 @@ find(ConstAccessor& ac, const TKey& key) {
   }
 
   // Acquire the lock, but don't block if it is already held
+  ListNode* node = hashAccessor->second.m_listNode;
+  node->isSingleton = false;
+  node->forward_count = 2;
   std::unique_lock<ListMutex> lock(m_listMutex, std::try_to_lock);
   if (lock) {
-    ListNode* node = hashAccessor->second.m_listNode;
     // The list node may be out of the list if it is in the process of being
     // inserted or evicted. Doing this check allows us to lock the list for
     // shorter periods of time.
@@ -673,13 +675,16 @@ delete_node(const TKey& key) {
   if (!m_map.find(hashAccessor, key)) {
     return false;
   }
+  std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* node = hashAccessor->second.m_listNode;
+  delink(node);
+  lock.unlock();
+  m_map.erase(hashAccessor);
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
     rdma_key_value_storage->deallocate(node->key_value);
   }
-  delete node;
-  m_map.erase(hashAccessor);
+
   return true;
 }
 
