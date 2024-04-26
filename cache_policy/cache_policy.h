@@ -142,7 +142,7 @@ struct RDMAKeyValueStorage
     auto count = 0;
     for (auto i = 0; i < cache_index_buffers.size(); i++)
     {
-      if (cache_index_buffers[i][key_index].key_value_ptr_offset != 0)
+      if (cache_index_buffers[i][key_index].key_value_ptr_offset != KEY_VALUE_PTR_INVALID)
       {
         count++;
       }
