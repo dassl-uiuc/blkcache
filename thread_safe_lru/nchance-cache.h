@@ -574,15 +574,15 @@ evict() {
   delete moribund;
 
   if (nodeCopy.isSingleton && nodeCopy.forward_count > 0) {
-    // info("[Singleton to forward]");
+    // info("[Singleton to forward1]");
     return static_cast<void*>(data);
   } else {
     if (replicaCount <= 1) {
-      // info("[Singleton to forward]");
+      // info("[Singleton to forward2]");
       return static_cast<void*>(data);
     }
   }
-  info("[NOT Returned] data->key : {} data->value : {} data->singleton : {} data->forward_count : {} data->replica_count : {}", data->key, data->value, data->singleton, data->forward_count, data->replica_count);
+  // info("[NOT Returned] data->key : {} data->value : {} data->singleton : {} data->forward_count : {} data->replica_count : {}", data->key, data->value, data->singleton, data->forward_count, data->replica_count);
   return nullptr;
 }
 
