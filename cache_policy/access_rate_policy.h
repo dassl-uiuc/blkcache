@@ -147,6 +147,11 @@ public:
         keys.push_back(it->first);
     }
 
+    for (auto& callback : this->clear_frequency_callbacks)
+    {
+      callback(keys);
+    }
+
     // Remove each key collected
     for (auto& key : keys) {
         key_freq.erase(key);

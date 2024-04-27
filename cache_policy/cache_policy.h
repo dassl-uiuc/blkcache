@@ -222,6 +222,9 @@ public:
   void add_callback_on_write(WriteCallback callback) { write_callbacks.emplace_back(callback); }
   virtual void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) { eviction_callbacks.emplace_back(callback); }
 
+  using ClearFrequencyCallback = std::function<void(std::vector<KeyType>&)>;
+  virtual void add_callback_on_clear_frequency(ClearFrequencyCallback callback) { clear_frequency_callbacks.emplace_back(callback); }
+
 protected:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<BlockDB> block_db;
@@ -232,4 +235,5 @@ protected:
   std::vector<ReadCallback> read_callbacks;
   std::vector<WriteCallback> write_callbacks;
   std::vector<EvictionCallback<KeyType, ValueType>> eviction_callbacks;
+  std::vector<ClearFrequencyCallback> clear_frequency_callbacks;
 };
