@@ -202,14 +202,25 @@ public:
 
   virtual void put(const KeyType &key, const ValueType &val,
                    bool owning = false) = 0;
+  
   virtual void* put_nchance(const KeyType &key, const ValueType &val,
            bool owning = false) { panic("Unsupported"); }
   virtual bool delete_key(const KeyType &key) { panic("Unsupported"); }
   virtual void put_singleton(const KeyType &key, const ValueType &val, 
-           bool isSingleton, int forward_count,
-           bool owning = false) { panic("Unsupported"); }
+           bool isSingleton, int forward_count,bool owning = false) { panic("Unsupported"); }
   virtual bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) { panic("Unsupported"); }
+  
+  virtual std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {panic("Unsupported"); }
+  virtual std::pair<uint64_t, uint64_t> get_access_rate_and_access_per_itr() {panic("Unsupported");}
+  virtual bool set_access_rate(uint64_t access_rate_) {panic("Unsupported");}
+  virtual bool set_access_per_itr(uint64_t access_per_itr_) { panic("Unsupported"); }
+  virtual std::tuple<float, float, float> get_water_marks() { panic("Unsupported"); }
+  virtual void set_water_marks(float water_mark_local_, float water_mark_remote_) { panic("Unsupported"); }
+  virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
+  virtual uint64_t get_cache_size() { panic("Unsupported"); }
+  virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
+  
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;

@@ -35,6 +35,11 @@ public:
     access_rate = access_rate_;
     access_per_itr = access_per_itr_;
     total_accesses = 0;
+    block_db_num_entries = block_cache_config.db.block_db.num_entries;
+    water_mark_local = 0;
+    water_mark_remote = (cache_size / block_db_num_entries);
+    water_mark_disk = 100.0;
+    cache_size = cache_size;
     info("Access rate: {} and access per itr: {}", access_rate, access_per_itr);
   }
 
@@ -145,6 +150,7 @@ public:
     // Iterate over the map to collect keys
     for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
         keys.push_back(it->first);
+        shadow_freq.push_back(std::make_pair(it->first, it->second));
     }
 
     // Remove each key collected
@@ -152,11 +158,53 @@ public:
         key_freq.erase(key);
     }
     is_clearing.store(false);
+
   }
 
   void wait_on_isclearing() {
     while (is_clearing.load()) {
       std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+  }
+
+  std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {
+    return shadow_freq;
+  }
+  
+  std::pair<uint64_t, uint64_t> get_access_rate_and_access_per_itr() {
+    return std::make_pair(access_rate, access_per_itr);
+  }
+
+  bool set_access_rate(uint64_t access_rate_) {
+    access_rate = access_rate_;
+    return true;
+  }
+
+  bool set_access_per_itr(uint64_t access_per_itr_) {
+    access_per_itr = access_per_itr_;
+    return true;
+  }
+
+  std::tuple<float, float, float> get_water_marks() {
+    return std::make_tuple(water_mark_local, water_mark_remote, water_mark_disk);
+  }
+
+  void set_water_marks(float water_mark_local_, float water_mark_remote_) {
+    water_mark_local = water_mark_local_;
+    water_mark_remote = water_mark_remote_;
+  }
+
+  uint64_t get_block_db_num_entries() {
+    return block_db_num_entries;
+  }
+
+  uint64_t get_cache_size() {
+    return cache_size;
+  }
+
+  void set_keys_under_l(const std::vector<KeyType>& keys) {
+    for (const auto& key : keys) {
+      keys_to_duplicate.insert(std::make_pair(key, 0));
     }
   }
 
@@ -167,9 +215,19 @@ private:
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
   std::atomic<uint64_t> total_accesses;
   std::atomic<bool> is_clearing;
+
   uint64_t access_rate;
   uint64_t access_per_itr;
 
+  float water_mark_local;
+  float water_mark_remote;
+  float water_mark_disk;
+  
+  uint64_t block_db_num_entries;
+  uint64_t cache_size;
+  
   tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
+  tbb::concurrent_hash_map<KeyType, uint64_t> keys_to_duplicate;
+  std::vector<std::pair<KeyType, uint64_t>> shadow_freq;
   std::mutex key_freq_mutex;
 };
