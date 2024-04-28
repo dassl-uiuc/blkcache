@@ -281,8 +281,8 @@ find(ConstAccessor& ac, const TKey& key) {
 
   // Acquire the lock, but don't block if it is already held
   ListNode* node = hashAccessor->second.m_listNode;
-  node->isSingleton = false;
-  node->forward_count = 2;
+  // node->isSingleton = false;
+  // node->forward_count = 2;
   std::unique_lock<ListMutex> lock(m_listMutex, std::try_to_lock);
   if (lock) {
     // The list node may be out of the list if it is in the process of being
@@ -577,12 +577,13 @@ evict() {
     // info("[Singleton to forward1]");
     return static_cast<void*>(data);
   } else {
-    if (replicaCount <= 1) {
+    if (replicaCount >= 1) {
+    // if (replicaCount <= 1) {
       // info("[Singleton to forward2]");
       return static_cast<void*>(data);
     }
   }
-  // info("[NOT Returned] data->key : {} data->value : {} data->singleton : {} data->forward_count : {} data->replica_count : {}", data->key, data->value, data->singleton, data->forward_count, data->replica_count);
+  info("[NOT Returned] data->key : {} data->value : {} data->singleton : {} data->forward_count : {} data->replica_count : {}", data->key, data->value, data->singleton, data->forward_count, data->replica_count);
   return nullptr;
 }
 
