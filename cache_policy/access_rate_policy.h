@@ -67,14 +67,14 @@ public:
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
     if(current_accesses > access_per_itr){
+      std::lock_guard<std::mutex> lock(key_freq_mutex);
+      {
         if (total_accesses.load() >= access_per_itr) {
           info("Clearing frequency");
-          std::lock_guard<std::mutex> lock(key_freq_mutex);
-          {
-            clear_frequency();
-            total_accesses.store(0);
-          }
+          clear_frequency();
+          total_accesses.store(0);
         }
+      }
     }
     
     total_accesses++;
