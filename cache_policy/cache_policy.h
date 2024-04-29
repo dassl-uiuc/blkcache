@@ -220,6 +220,14 @@ public:
   virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
   virtual uint64_t get_cache_size() { panic("Unsupported"); }
   virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
+
+  virtual void print_shadow_freq_to_a_file() { panic("Unsupported"); }
+  virtual void print_key_freq_to_a_file() { panic("Unsupported"); }
+  virtual void print_keys_to_duplicate_to_a_file() { panic("Unsupported"); }
+  virtual void print_cache_stats() { panic("Unsupported"); }
+  virtual void print_all_stats() { panic("Unsupported"); }
+
+  
   
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
@@ -233,7 +241,7 @@ public:
   void add_callback_on_write(WriteCallback callback) { write_callbacks.emplace_back(callback); }
   virtual void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) { eviction_callbacks.emplace_back(callback); }
 
-  using ClearFrequencyCallback = std::function<void(std::vector<KeyType>&)>;
+  using ClearFrequencyCallback = std::function<void(std::vector<std::pair<KeyType, uint64_t>>&)>;
   virtual void add_callback_on_clear_frequency(ClearFrequencyCallback callback) { clear_frequency_callbacks.emplace_back(callback); }
 
 protected:

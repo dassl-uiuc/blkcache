@@ -67,10 +67,13 @@ public:
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
     if(current_accesses > access_per_itr){
-        if (total_accesses.load(std::memory_order_relaxed) >= access_per_itr) {
+        if (total_accesses.load() >= access_per_itr) {
           info("Clearing frequency");
-          clear_frequency();
-          total_accesses.store(0);
+          std::lock_guard<std::mutex> lock(key_freq_mutex);
+          {
+            clear_frequency();
+            total_accesses.store(0);
+          }
         }
     }
     
@@ -155,7 +158,7 @@ public:
 
     for (auto& callback : this->clear_frequency_callbacks)
     {
-      callback(keys);
+      callback(shadow_freq);
     }
 
     // Remove each key collected
@@ -163,7 +166,6 @@ public:
         key_freq.erase(key);
     }
     is_clearing.store(false);
-
   }
 
   void wait_on_isclearing() {
@@ -212,6 +214,54 @@ public:
       keys_to_duplicate.insert(std::make_pair(key, 0));
     }
   }
+  
+  void print_shadow_freq_to_a_file(){
+    std::ofstream file;
+    file.open("shadow_freq.txt");
+    for (auto& key_freq : shadow_freq){
+      file << key_freq.first << " " << key_freq.second << std::endl;
+    }
+    file.close();  
+  }
+  
+  void print_key_freq_to_a_file(){
+    std::ofstream file;
+    file.open("key_freq.txt");
+    for (auto& key_freq : key_freq){
+      file << key_freq.first << " " << key_freq.second << std::endl;
+    }
+    file.close();
+  }
+
+  void print_keys_to_duplicate_to_a_file(){
+    std::ofstream file;
+    file.open("keys_to_duplicate.txt");
+    for (auto& key_freq : keys_to_duplicate){
+      file << key_freq.first << " " << key_freq.second << std::endl;
+    }
+    file.close();
+  }
+
+  void print_cache_stats(){
+    std::ofstream file;
+    file.open("cache_stats.txt");
+    file << "Cache size: " << cache_size << std::endl;
+    file << "Access rate: " << access_rate << std::endl;
+    file << "Access per itr: " << access_per_itr << std::endl;
+    file << "Block db num entries: " << block_db_num_entries << std::endl;
+    file << "Water mark local: " << water_mark_local << std::endl;
+    file << "Water mark remote: " << water_mark_remote << std::endl;
+    file << "Water mark disk: " << water_mark_disk << std::endl;
+    file.close();
+  }
+
+  void print_all_stats(){
+    print_shadow_freq_to_a_file();
+    print_key_freq_to_a_file();
+    print_keys_to_duplicate_to_a_file();
+    print_cache_stats();
+  }
+
 
 
 private:
@@ -235,4 +285,5 @@ private:
   tbb::concurrent_hash_map<KeyType, uint64_t> keys_to_duplicate;
   std::vector<std::pair<KeyType, uint64_t>> shadow_freq;
   std::mutex key_freq_mutex;
+  std::mutex clear_freq_lock;
 };
