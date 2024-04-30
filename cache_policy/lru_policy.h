@@ -43,6 +43,25 @@ public:
     }
   }
 
+  template<typename F>
+  void iterate(F f)
+  {
+    for (auto& [k, v] : item_list)
+    {
+      f(k, v);
+    }
+  }
+
+  bool full() const {
+    return item_list.size() >= this->cache_size;
+  }
+
+  void clear()
+  {
+    item_list.clear();
+    item_map.clear();
+  }
+
 private:
   void clean(void) {
     while (item_map.size() > this->cache_size) {
