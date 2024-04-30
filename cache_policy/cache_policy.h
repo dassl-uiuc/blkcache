@@ -219,7 +219,9 @@ public:
   virtual void set_water_marks(float water_mark_local_, float water_mark_remote_) { panic("Unsupported"); }
   virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
   virtual uint64_t get_cache_size() { panic("Unsupported"); }
+  virtual bool is_ready() { panic("Unsupported"); }
   virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
+  virtual std::vector<std::pair<KeyType, uint64_t>> clear_frequency_and_return_freq() { panic("Unsupported"); }
 
   virtual void print_shadow_freq_to_a_file() { panic("Unsupported"); }
   virtual void print_key_freq_to_a_file() { panic("Unsupported"); }

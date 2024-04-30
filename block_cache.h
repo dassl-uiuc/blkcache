@@ -14,6 +14,7 @@
 #include "cache_policy/thread_safe_lru_policy.h"
 #include "cache_policy/nchance_policy.h"
 #include "cache_policy/access_rate_policy.h"
+#include "cache_policy/access_rate_policy_dynamic.h"
 
 #include "db/block_db.h"
 #include "db/db.h"
@@ -119,6 +120,12 @@ public:
               cache_size, 
               block_cache_config.access_rate,
               block_cache_config.access_per_itr);
+        } else if (cache_type == "access_rate_dynamic") {
+          new_cache = std::make_shared<ThreadSafeLRUAccessRateDynamicCache<K, V>>(
+              block_cache_config, db,
+              cache_size, 
+              block_cache_config.access_rate,
+              block_cache_config.access_per_itr);
         } else {
           panic("Read cache type '{}' is not supported",
                 cache_type);
@@ -143,6 +150,12 @@ public:
           block_cache_config.cache.thread_safe_lru.cache_size);
     } else if (block_cache_config.policy_type == "access_rate") {
       cache = std::make_shared<ThreadSafeLRUAccessRateCache<K, V>>(
+          block_cache_config, db,
+          block_cache_config.cache.thread_safe_lru.cache_size, 
+          block_cache_config.access_rate,
+          block_cache_config.access_per_itr);
+    } else if (block_cache_config.policy_type == "access_rate_dynamic") {
+      cache = std::make_shared<ThreadSafeLRUAccessRateDynamicCache<K, V>>(
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size, 
           block_cache_config.access_rate,

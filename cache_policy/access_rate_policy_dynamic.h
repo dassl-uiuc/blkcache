@@ -19,11 +19,11 @@ typedef String::HashCompare HashCompare;
 using RDMAFriendlyString = tstarling::ThreadSafeStringKey;
 
 template <typename KeyType, typename ValueType>
-class ThreadSafeLRUAccessRateCache : public CachePolicy<KeyType, ValueType> {
+class ThreadSafeLRUAccessRateDynamicCache : public CachePolicy<KeyType, ValueType> {
 public:
   using Cache = tstarling::ThreadSafeLRUAccessRateCache<String, std::string, HashCompare>;
   
-  ThreadSafeLRUAccessRateCache(BlockCacheConfig block_cache_config_,
+  ThreadSafeLRUAccessRateDynamicCache(BlockCacheConfig block_cache_config_,
                      std::shared_ptr<BlockDB> block_db, uint64_t cache_size, uint64_t access_rate_ = 1, uint64_t access_per_itr_ = 1000)
       : block_cache_config(block_cache_config_), CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
                                         cache_size) {
@@ -66,17 +66,6 @@ public:
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
-    if(current_accesses > access_per_itr){
-      std::lock_guard<std::mutex> lock(key_freq_mutex);
-      {
-        if (total_accesses.load() >= access_per_itr) {
-          info("Clearing frequency");
-          clear_frequency();
-          total_accesses.store(0);
-        }
-      }
-    }
-    
     total_accesses++;
     update_frequency(key);
     
@@ -110,11 +99,6 @@ public:
     }
   }
 
-  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) override {
-    this->eviction_callbacks.emplace_back(callback);
-    secm->add_callback_on_eviction(callback);
-  }
-
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
 
   using ConstFrequencyAccessor = tbb::concurrent_hash_map<KeyType, uint64_t>::const_accessor;
@@ -146,7 +130,7 @@ public:
     }
 }
 
-  void clear_frequency() {
+  std::vector<std::pair<KeyType, uint64_t>> clear_frequency_and_return_freq() {
     is_clearing.store(true);
     std::vector<KeyType> keys;
 
@@ -156,16 +140,12 @@ public:
         shadow_freq.push_back(std::make_pair(it->first, it->second));
     }
 
-    // for (auto& callback : this->clear_frequency_callbacks)
-    // {
-    //   callback(shadow_freq);
-    // }
-
     // Remove each key collected
     for (auto& key : keys) {
         key_freq.erase(key);
     }
     is_clearing.store(false);
+    return shadow_freq;
   }
 
   void wait_on_isclearing() {
@@ -260,6 +240,12 @@ public:
     print_key_freq_to_a_file();
     print_keys_to_duplicate_to_a_file();
     print_cache_stats();
+  }
+
+  bool is_ready() override {
+    if(total_accesses.load() > 0){
+      return true;
+    }
   }
 
 
