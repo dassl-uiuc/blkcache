@@ -246,18 +246,46 @@ public:
     print_cache_stats();
   }
 
-  bool is_ready() override {
+  bool is_ready(){
     return false;
     if(total_accesses.load() > 400000){
       return true;
     }
   }
 
+  uint64_t get_total_accesses() {
+    return total_accesses.load();
+  }
+
+  uint64_t get_total_cache_duplication() {
+    return Total_cache_duplication.load();
+  }
+
+  void set_total_cache_duplication(uint64_t total_cache_duplication_) {
+    Total_cache_duplication.store(total_cache_duplication_);
+  }
+
+  void update_total_cache_duplication(uint64_t total_cache_duplication_) {
+    Total_cache_duplication.fetch_add(total_cache_duplication_, std::memory_order_relaxed);
+  }
+
+  uint64_t get_duplications_allowed() {
+    return duplications_allowed;
+  }
+
+  void set_duplications_allowed(uint64_t duplications_allowed_) {
+    duplications_allowed = duplications_allowed_;
+  }
+
+
+
 private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<Cache> secm = nullptr;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
   std::atomic<uint64_t> total_accesses;
+  std::atomic<uint64_t> Total_cache_duplication;
+  uint64_t duplications_allowed;
   std::atomic<bool> is_clearing;
 
   uint64_t access_rate;
