@@ -36,10 +36,10 @@ public:
     access_per_itr = access_per_itr_;
     total_accesses = 0;
     block_db_num_entries = block_cache_config.db.block_db.num_entries;
-    water_mark_local = 0;
+    cache_size = block_cache_config.cache.lru.cache_size;
+    water_mark_local = 0.0;
     water_mark_remote = (cache_size / block_db_num_entries);
     water_mark_disk = 100.0;
-    cache_size = cache_size;
     // info("Access rate: {} and access per itr: {}", access_rate, access_per_itr);
     info("This is Dynamic access_rate: {}", access_rate);
   }
