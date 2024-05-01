@@ -60,9 +60,24 @@ public:
     }
   }
 
+  bool check_if_key_access_rate_match_the_past(const KeyType &key) {
+    ConstFrequencyAccessor acc;
+    if (keys_from_past.find(acc, key)) {
+      if(acc->second >= access_rate){
+        return true;
+      }
+    }
+    return false;
+  }
+
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
+    if(check_if_key_access_rate_match_the_past(key)){
+      // info("Access rate match for key: {} from its past Itr", key);
+      put(key, val, owning);
+      return true;
+    }
     if(get_frequency(key) >= access_rate){
       // info("Access rate match for key: {}", key);
       put(key, val, owning);
@@ -285,6 +300,7 @@ public:
       return true;
     }
   }
+  
 
   uint64_t get_total_accesses() {
     return total_accesses.load();
