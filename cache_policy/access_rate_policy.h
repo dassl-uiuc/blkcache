@@ -158,7 +158,6 @@ public:
 
     // for (auto& callback : this->clear_frequency_callbacks)
     // {
-    //   callback(shadow_freq);
     // }
 
     // Remove each key collected
