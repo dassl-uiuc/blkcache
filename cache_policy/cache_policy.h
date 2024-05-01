@@ -28,13 +28,16 @@ struct RDMACacheIndex
   uint64_t forward_count;
 };
 
+constexpr auto RDMA_CACHE_INDEX_KEY_VALUE_SIZE = 100;
+
+struct RDMACacheIndexKeyValue
+{
+  uint64_t key_index;
+  uint8_t data[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
+};
+
 struct RDMAKeyValueStorage
 {
-  struct Data
-  {
-    uint64_t key;
-  };
-
   RDMAKeyValueStorage(BlockCacheConfig block_cache_config_) :
     block_cache_config(block_cache_config_)
   {
@@ -173,9 +176,7 @@ struct RDMAKeyValueStorage
   void* get_key_value_buffer() { return key_value_buffer; }
   std::size_t get_key_value_buffer_size() { return key_value_buffer_size; }
 
-  std::size_t get_key_size() { return sizeof(Data); }
-  std::size_t get_value_size() { return 100; }
-  std::size_t get_key_value_size() { return get_key_size() + get_value_size(); }
+  std::size_t get_key_value_size() { return sizeof(RDMACacheIndexKeyValue); }
 
 private:
   BlockCacheConfig block_cache_config;
@@ -202,14 +203,36 @@ public:
 
   virtual void put(const KeyType &key, const ValueType &val,
                    bool owning = false) = 0;
+  
   virtual void* put_nchance(const KeyType &key, const ValueType &val,
            bool owning = false) { panic("Unsupported"); }
   virtual bool delete_key(const KeyType &key) { panic("Unsupported"); }
   virtual void put_singleton(const KeyType &key, const ValueType &val, 
-           bool isSingleton, int forward_count,
-           bool owning = false) { panic("Unsupported"); }
+           bool isSingleton, int forward_count,bool owning = false) { panic("Unsupported"); }
   virtual bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) { panic("Unsupported"); }
+  
+  virtual std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {panic("Unsupported"); }
+  virtual std::pair<uint64_t, uint64_t> get_access_rate_and_access_per_itr() {panic("Unsupported");}
+  virtual bool set_access_rate(uint64_t access_rate_) {panic("Unsupported");}
+  virtual bool set_access_per_itr(uint64_t access_per_itr_) { panic("Unsupported"); }
+  virtual std::tuple<uint64_t, uint64_t, uint64_t> get_water_marks() { panic("Unsupported"); }
+  virtual void set_water_marks(uint64_t water_mark_local_, uint64_t water_mark_remote_) { panic("Unsupported"); }
+  virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
+  virtual uint64_t get_cache_size() { panic("Unsupported"); }
+  virtual bool is_ready() { panic("Unsupported"); }
+  virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
+  virtual void clear_frequency() { panic("Unsupported"); }
+  virtual void set_keys_from_past(std::vector<std::pair<uint64_t,std::string>>& cdf) { panic("Unsupported"); }
+
+  virtual void print_shadow_freq_to_a_file() { panic("Unsupported"); }
+  virtual void print_key_freq_to_a_file() { panic("Unsupported"); }
+  virtual void print_keys_to_duplicate_to_a_file() { panic("Unsupported"); }
+  virtual void print_cache_stats() { panic("Unsupported"); }
+  virtual void print_all_stats() { panic("Unsupported"); }
+
+  
+  
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;
@@ -222,7 +245,7 @@ public:
   void add_callback_on_write(WriteCallback callback) { write_callbacks.emplace_back(callback); }
   virtual void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) { eviction_callbacks.emplace_back(callback); }
 
-  using ClearFrequencyCallback = std::function<void(std::vector<KeyType>&)>;
+  using ClearFrequencyCallback = std::function<void(std::vector<std::pair<KeyType, uint64_t>>&)>;
   virtual void add_callback_on_clear_frequency(ClearFrequencyCallback callback) { clear_frequency_callbacks.emplace_back(callback); }
 
 protected:
