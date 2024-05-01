@@ -233,6 +233,9 @@ public:
   void print_shadow_freq_to_a_file(){
     std::ofstream file;
     file.open("shadow_freq.txt");
+    std::sort(shadow_freq.begin(), shadow_freq.end(), [](const std::pair<KeyType, uint64_t>& a, const std::pair<KeyType, uint64_t>& b) {
+      return a.second > b.second;
+    });
     for (auto& key_freq : shadow_freq){
       file << key_freq.first << " " << key_freq.second << std::endl;
     }
