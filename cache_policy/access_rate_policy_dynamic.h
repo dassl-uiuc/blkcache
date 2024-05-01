@@ -141,6 +141,7 @@ public:
   void clear_frequency() {
     is_clearing.store(true);
     std::vector<KeyType> keys;
+    shadow_freq.clear();
 
     // Iterate over the map to collect keys
     for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
