@@ -131,7 +131,7 @@ public:
     }
   }
 
-  std::vector<std::pair<KeyType, uint64_t>> clear_frequency_and_return_freq() {
+  void clear_frequency() {
     is_clearing.store(true);
     std::vector<KeyType> keys;
 
