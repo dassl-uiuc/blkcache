@@ -149,7 +149,7 @@ public:
         key_freq.erase(key);
     }
     is_clearing.store(false);
-    return shadow_freq;
+    // return shadow_freq;
   }
 
   void wait_on_isclearing() {
