@@ -39,8 +39,11 @@ public:
     // cache_size = block_cache_config.cache.lru.cache_size;
     cache_size = cache_size_;
     water_mark_local = 0;
-    water_mark_remote = cache_size_ * 3;
-    water_mark_disk = 100;
+    if(cache_size_ * 3 <= block_db_num_entries)
+      water_mark_remote = cache_size_ * 3;
+    else
+      water_mark_remote = block_db_num_entries;
+    water_mark_disk = block_db_num_entries;
     info("access_rate: {} and access_per_itr: {} and cache_size: {}", access_rate, access_per_itr, cache_size);
     info("water_mark_local: {} and water_mark_remote: {}", water_mark_local, water_mark_remote);
     info("block_db_num_entries: {}", block_db_num_entries);
