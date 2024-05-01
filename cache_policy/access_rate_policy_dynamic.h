@@ -159,6 +159,26 @@ public:
     is_clearing.store(false);
     // return shadow_freq;
   }
+  
+  void set_keys_from_past(std::vector<std::pair<uint64_t,std::string>>& cdf) {
+    bool found = false;
+    for (auto& it : cdf) {
+      found = false;
+      {
+        FrequencyAccessor acc;
+        if (key_freq.find(acc, it.second)) {
+          acc->second = it.first;
+          found = true;
+        }
+      }
+      if (!found)
+      {
+        FrequencyAccessor acc;
+        key_freq.insert(acc, it.second);
+        acc->second = it.first;
+      }
+    }
+  }
 
   void wait_on_isclearing() {
     while (is_clearing.load()) {
@@ -286,7 +306,6 @@ public:
   void set_duplications_allowed(uint64_t duplications_allowed_) {
     duplications_allowed = duplications_allowed_;
   }
-
 
 
 private:
