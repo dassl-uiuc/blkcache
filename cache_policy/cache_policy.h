@@ -39,7 +39,7 @@ struct RDMAKeyValueStorage
     block_cache_config(block_cache_config_)
   {
     // key_value_buffer_size = 1024 * 1024 * 1024;
-    key_value_buffer_size = block_cache_config.db.block_db.num_entries * get_key_value_size();
+    key_value_buffer_size = (block_cache_config.db.block_db.num_entries + 1) * get_key_value_size();
 
     key_value_buffer = std::malloc(key_value_buffer_size);
     std::memset(key_value_buffer, KEY_VALUE_PTR_INVALID, key_value_buffer_size);
