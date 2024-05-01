@@ -215,8 +215,8 @@ public:
   virtual std::pair<uint64_t, uint64_t> get_access_rate_and_access_per_itr() {panic("Unsupported");}
   virtual bool set_access_rate(uint64_t access_rate_) {panic("Unsupported");}
   virtual bool set_access_per_itr(uint64_t access_per_itr_) { panic("Unsupported"); }
-  virtual std::tuple<float, float, float> get_water_marks() { panic("Unsupported"); }
-  virtual void set_water_marks(float water_mark_local_, float water_mark_remote_) { panic("Unsupported"); }
+  virtual std::tuple<uint64_t, uint64_t, uint64_t> get_water_marks() { panic("Unsupported"); }
+  virtual void set_water_marks(uint64_t water_mark_local_, uint64_t water_mark_remote_) { panic("Unsupported"); }
   virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
   virtual uint64_t get_cache_size() { panic("Unsupported"); }
   virtual bool is_ready() { panic("Unsupported"); }

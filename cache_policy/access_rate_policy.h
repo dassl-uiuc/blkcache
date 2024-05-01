@@ -192,11 +192,11 @@ public:
     return true;
   }
 
-  std::tuple<float, float, float> get_water_marks() {
+  std::tuple<uint64_t, uint64_t, uint64_t> get_water_marks() {
     return std::make_tuple(water_mark_local, water_mark_remote, water_mark_disk);
   }
 
-  void set_water_marks(float water_mark_local_, float water_mark_remote_) {
+  void set_water_marks(uint64_t water_mark_local_, uint64_t water_mark_remote_) {
     water_mark_local = water_mark_local_;
     water_mark_remote = water_mark_remote_;
   }
