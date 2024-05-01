@@ -40,6 +40,9 @@ public:
     water_mark_local = 0.0;
     water_mark_remote = (cache_size / block_db_num_entries);
     water_mark_disk = 100.0;
+    info("access_rate: {} and access_per_itr: {} and cache_size: {}", access_rate, access_per_itr, cache_size);
+    info("water_mark_local: {} and water_mark_remote: {}", water_mark_local, water_mark_remote);
+    info("block_db_num_entries: {}", block_db_num_entries);
     // info("Access rate: {} and access per itr: {}", access_rate, access_per_itr);
     info("This is Dynamic access_rate: {}", access_rate);
   }
