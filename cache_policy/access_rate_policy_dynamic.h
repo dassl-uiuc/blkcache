@@ -73,7 +73,7 @@ public:
 
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
-    uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
+    uint64_t current_accesses = total_accesses.fetch_add(1) + 1;
     total_accesses++;
     update_frequency(key);
     
