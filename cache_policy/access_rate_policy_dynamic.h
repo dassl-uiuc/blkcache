@@ -198,7 +198,10 @@ public:
   }
 
   uint64_t get_cache_size() {
-    return cache_size;
+    if(cache_size * 3 <= block_db_num_entries)
+      return cache_size * 3;
+    else
+      return block_db_num_entries;
   }
 
   void set_keys_under_l(const std::vector<KeyType>& keys) {
