@@ -247,7 +247,7 @@ public:
   }
 
   bool is_ready(){
-    if(total_accesses.load() > 40000){
+    if(total_accesses.load() > 400000){
       return true;
     }
   }
