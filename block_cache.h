@@ -115,12 +115,14 @@ public:
           new_cache = std::make_shared<ThreadSafeLRUNchanceCache<K, V>>(
               block_cache_config, db, cache_size);
         } else if (cache_type == "access_rate") {
+          info("Creating access rate cache with access rate: {}, access per itr: {}", block_cache_config.access_rate, block_cache_config.access_per_itr);
           new_cache = std::make_shared<ThreadSafeLRUAccessRateCache<K, V>>(
               block_cache_config, db,
               cache_size, 
               block_cache_config.access_rate,
               block_cache_config.access_per_itr);
         } else if (cache_type == "access_rate_dynamic") {
+          info("Creating access rate dynamic cache");
           new_cache = std::make_shared<ThreadSafeLRUAccessRateDynamicCache<K, V>>(
               block_cache_config, db,
               cache_size, 
@@ -149,12 +151,14 @@ public:
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size);
     } else if (block_cache_config.policy_type == "access_rate") {
+      info("Creating access rate cache with access rate: {}, access per itr: {}", block_cache_config.access_rate, block_cache_config.access_per_itr);
       cache = std::make_shared<ThreadSafeLRUAccessRateCache<K, V>>(
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size, 
           block_cache_config.access_rate,
           block_cache_config.access_per_itr);
     } else if (block_cache_config.policy_type == "access_rate_dynamic") {
+      info("Creating access rate dynamic cache");
       cache = std::make_shared<ThreadSafeLRUAccessRateDynamicCache<K, V>>(
           block_cache_config, db,
           block_cache_config.cache.thread_safe_lru.cache_size, 
