@@ -40,7 +40,8 @@ public:
     water_mark_remote = (cache_size / block_db_num_entries);
     water_mark_disk = 100.0;
     cache_size = cache_size;
-    info("Access rate: {} and access per itr: {}", access_rate, access_per_itr);
+    // info("Access rate: {} and access per itr: {}", access_rate, access_per_itr);
+    info("This is Dynamic access_rate: {}", access_rate);
   }
 
   void put(const KeyType &key, const ValueType &val,
@@ -110,7 +111,7 @@ public:
       return acc->second;
     }
     return 0;
-}
+  }
 
   void update_frequency(const KeyType& key) {
     wait_on_isclearing();
@@ -128,7 +129,7 @@ public:
       key_freq.insert(acc, key);
       acc->second = 1;
     }
-}
+  }
 
   std::vector<std::pair<KeyType, uint64_t>> clear_frequency_and_return_freq() {
     is_clearing.store(true);
@@ -138,6 +139,9 @@ public:
     for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
         keys.push_back(it->first);
         shadow_freq.push_back(std::make_pair(it->first, it->second));
+        FrequencyAccessor acc;
+        keys_from_past.insert(acc, it->first);
+        acc->second = it->second;
     }
 
     // Remove each key collected
@@ -191,7 +195,7 @@ public:
 
   void set_keys_under_l(const std::vector<KeyType>& keys) {
     for (const auto& key : keys) {
-      keys_to_duplicate.insert(std::make_pair(key, 0));
+      keys_from_past.insert(std::make_pair(key, 0));
     }
   }
   
@@ -213,10 +217,10 @@ public:
     file.close();
   }
 
-  void print_keys_to_duplicate_to_a_file(){
+  void print_keys_from_past_to_a_file(){
     std::ofstream file;
-    file.open("keys_to_duplicate.txt");
-    for (auto& key_freq : keys_to_duplicate){
+    file.open("keys_from_past.txt");
+    for (auto& key_freq : keys_from_past){
       file << key_freq.first << " " << key_freq.second << std::endl;
     }
     file.close();
@@ -238,17 +242,16 @@ public:
   void print_all_stats(){
     print_shadow_freq_to_a_file();
     print_key_freq_to_a_file();
-    print_keys_to_duplicate_to_a_file();
+    print_keys_from_past_to_a_file();
     print_cache_stats();
   }
 
   bool is_ready() override {
-    if(total_accesses.load() > 0){
+    return false;
+    if(total_accesses.load() > 400000){
       return true;
     }
   }
-
-
 
 private:
   BlockCacheConfig block_cache_config;
@@ -268,7 +271,7 @@ private:
   uint64_t cache_size;
   
   tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
-  tbb::concurrent_hash_map<KeyType, uint64_t> keys_to_duplicate;
+  tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past;
   std::vector<std::pair<KeyType, uint64_t>> shadow_freq;
   std::mutex key_freq_mutex;
   std::mutex clear_freq_lock;
