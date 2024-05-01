@@ -28,13 +28,16 @@ struct RDMACacheIndex
   uint64_t forward_count;
 };
 
+constexpr auto RDMA_CACHE_INDEX_KEY_VALUE_SIZE = 100;
+
+struct RDMACacheIndexKeyValue
+{
+  uint64_t key_index;
+  uint8_t data[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
+};
+
 struct RDMAKeyValueStorage
 {
-  struct Data
-  {
-    uint64_t key;
-  };
-
   RDMAKeyValueStorage(BlockCacheConfig block_cache_config_) :
     block_cache_config(block_cache_config_)
   {
@@ -173,9 +176,7 @@ struct RDMAKeyValueStorage
   void* get_key_value_buffer() { return key_value_buffer; }
   std::size_t get_key_value_buffer_size() { return key_value_buffer_size; }
 
-  std::size_t get_key_size() { return sizeof(Data); }
-  std::size_t get_value_size() { return 100; }
-  std::size_t get_key_value_size() { return get_key_size() + get_value_size(); }
+  std::size_t get_key_value_size() { return sizeof(RDMACacheIndexKeyValue); }
 
 private:
   BlockCacheConfig block_cache_config;
