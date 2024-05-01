@@ -24,22 +24,23 @@ public:
   using Cache = tstarling::ThreadSafeLRUAccessRateCache<String, std::string, HashCompare>;
   
   ThreadSafeLRUAccessRateDynamicCache(BlockCacheConfig block_cache_config_,
-                     std::shared_ptr<BlockDB> block_db, uint64_t cache_size, uint64_t access_rate_ = 1, uint64_t access_per_itr_ = 1000)
+                     std::shared_ptr<BlockDB> block_db, uint64_t cache_size_, uint64_t access_rate_ = 1, uint64_t access_per_itr_ = 1000)
       : block_cache_config(block_cache_config_), CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
                                         cache_size) {
     if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
     {
       rdma_key_value_storage = std::make_shared<RDMAKeyValueStorage>(block_cache_config);
     }
-    secm = std::make_shared<Cache>(cache_size, block_cache_config, rdma_key_value_storage);
+    secm = std::make_shared<Cache>(cache_size_, block_cache_config, rdma_key_value_storage);
     access_rate = access_rate_;
     access_per_itr = access_per_itr_;
     total_accesses = 0;
     block_db_num_entries = block_cache_config.db.block_db.num_entries;
-    cache_size = block_cache_config.cache.lru.cache_size;
-    water_mark_local = 0.0;
-    water_mark_remote = float(cache_size / block_db_num_entries);
-    water_mark_disk = 100.0;
+    // cache_size = block_cache_config.cache.lru.cache_size;
+    cache_size = cache_size_;
+    water_mark_local = 0;
+    water_mark_remote = cache_size_ * 3;
+    water_mark_disk = 100;
     info("access_rate: {} and access_per_itr: {} and cache_size: {}", access_rate, access_per_itr, cache_size);
     info("water_mark_local: {} and water_mark_remote: {}", water_mark_local, water_mark_remote);
     info("block_db_num_entries: {}", block_db_num_entries);
