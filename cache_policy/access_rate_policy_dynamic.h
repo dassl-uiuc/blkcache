@@ -74,7 +74,7 @@ public:
            bool owning = false) override {
     update_frequency(key);
     if(check_if_key_access_rate_match_the_past(key)){
-      // info("Access rate match for key: {} from its past Itr", key);
+      info("Access rate match for key: {} from its past Itr", key);
       put(key, val, owning);
       return true;
     }
