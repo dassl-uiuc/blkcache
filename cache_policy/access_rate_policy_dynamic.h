@@ -73,11 +73,11 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    if(check_if_key_access_rate_match_the_past(key)){
-      info("Access rate match for key: {} from its past Itr", key);
-      put(key, val, owning);
-      return true;
-    }
+    // if(check_if_key_access_rate_match_the_past(key)){
+    //   info("Access rate match for key: {} from its past Itr", key);
+    //   put(key, val, owning);
+    //   return true;
+    // }
     if(get_frequency(key) >= access_rate){
       // info("Access rate match for key: {}", key);
       put(key, val, owning);
@@ -88,7 +88,7 @@ public:
 
   ValueType get(const KeyType &key) override {
     String skey(key.c_str(), key.length());
-    uint64_t current_accesses = total_accesses.fetch_add(1) + 1;
+    uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
     total_accesses++;
     update_frequency(key);
     
@@ -162,9 +162,6 @@ public:
     for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
         keys.push_back(it->first);
         shadow_freq.push_back(std::make_pair(it->first, it->second));
-        FrequencyAccessor acc;
-        keys_from_past.insert(acc, it->first);
-        acc->second = it->second;
     }
 
     // Remove each key collected
