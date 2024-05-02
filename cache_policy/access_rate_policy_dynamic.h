@@ -73,11 +73,11 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    if(check_if_key_access_rate_match_the_past(key)){
-      info("Access rate match for key: {} from its past Itr", key);
-      put(key, val, owning);
-      return true;
-    }
+    // if(check_if_key_access_rate_match_the_past(key)){
+    //   info("Access rate match for key: {} from its past Itr", key);
+    //   put(key, val, owning);
+    //   return true;
+    // }
     if(get_frequency(key) >= access_rate){
       // info("Access rate match for key: {}", key);
       put(key, val, owning);
@@ -208,6 +208,7 @@ public:
 
   bool set_access_rate(uint64_t access_rate_) {
     access_rate = access_rate_;
+    accessrate_history.push_back(access_rate);
     return true;
   }
 
@@ -272,6 +273,16 @@ public:
     file.close();
   }
 
+  void print_access_rate(){
+    std::ofstream file;
+    file.open("access_rate.txt");
+    for (auto& rate : accessrate_history){
+      file << rate << std::endl;
+    }
+    file << access_rate << std::endl;
+    file.close();
+  }
+
   void print_cache_stats(){
     std::ofstream file;
     file.open("cache_stats.txt");
@@ -290,6 +301,7 @@ public:
     print_key_freq_to_a_file();
     print_keys_from_past_to_a_file();
     print_cache_stats();
+    print_access_rate();
   }
 
   bool is_ready(){
@@ -324,6 +336,7 @@ public:
   }
 
 
+
 private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<Cache> secm = nullptr;
@@ -342,6 +355,8 @@ private:
   
   uint64_t block_db_num_entries;
   uint64_t cache_size;
+
+  std::vector<uint64_t> accessrate_history;
   
   tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
   tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past;
