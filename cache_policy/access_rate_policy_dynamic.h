@@ -73,11 +73,11 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    // if(check_if_key_access_rate_match_the_past(key)){
-    //   info("Access rate match for key: {} from its past Itr", key);
-    //   put(key, val, owning);
-    //   return true;
-    // }
+    if(check_if_key_access_rate_match_the_past(key)){
+      info("Access rate match for key: {} from its past Itr", key);
+      put(key, val, owning);
+      return true;
+    }
     if(get_frequency(key) >= access_rate){
       // info("Access rate match for key: {}", key);
       put(key, val, owning);
