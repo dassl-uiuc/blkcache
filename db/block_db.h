@@ -38,14 +38,14 @@ public:
           iouring_worker->waiting_thread.join();
           io_uring_queue_exit(&iouring_worker->ring);
 
-          AsyncReadRequest* async_read_request;
-          while (iouring_worker->async_read_requests.try_dequeue(async_read_request))
+          AsyncReadWriteRequest* async_read_write_request;
+          while (iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
           {
-            for (auto& iovec : async_read_request->iovecs)
+            for (auto& iovec : async_read_write_request->iovecs)
             {
               free(iovec.iov_base);
             }
-            delete async_read_request;
+            delete async_read_write_request;
           }
         }
       }
@@ -112,8 +112,8 @@ public:
         // Init read requests
         for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
         {
-          auto async_read_request = new AsyncReadRequest{};
-          auto& iovecs = async_read_request->iovecs;
+          auto async_read_write_request = new AsyncReadWriteRequest{};
+          auto& iovecs = async_read_write_request->iovecs;
           auto& iovec = iovecs.emplace_back();
           if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
             perror("posix_memalign");
@@ -121,7 +121,7 @@ public:
           }
           iovec.iov_len = BLOCK_DB_SIZE;
 
-          iouring_worker->async_read_requests.enqueue(async_read_request);
+          iouring_worker->async_read_write_requests.enqueue(async_read_write_request);
         }
 
         // Submitting thread
@@ -131,8 +131,8 @@ public:
           {
             struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
-            AsyncReadRequest async_submit_read_request;
-            while (!iouring_worker->async_read_submit_requests.try_dequeue(async_submit_read_request))
+            AsyncReadWriteRequest async_submit_read_request;
+            while (!iouring_worker->async_read_write_submit_requests.try_dequeue(async_submit_read_request))
             {
               if (iouring_worker->stop)
               {
@@ -146,20 +146,28 @@ public:
               break;
             }
 
-            AsyncReadRequest* async_read_request;
-            while (!iouring_worker->async_read_requests.try_dequeue(async_read_request))
+            AsyncReadWriteRequest* async_read_write_request;
+            while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
             {
-              panic("No async_read_request available!");
+              panic("No async_read_write_request available!");
             }
 
-            async_read_request->key = async_submit_read_request.key;
-            async_read_request->callback = std::move(async_submit_read_request.callback);
+            async_read_write_request->key = async_submit_read_request.key;
+            async_read_write_request->value = async_submit_read_request.value;
+            async_read_write_request->callback = std::move(async_submit_read_request.callback);
             auto offset = async_submit_read_request.iovecs[0].iov_len;
             
-            auto& iovecs = async_read_request->iovecs;
+            auto& iovecs = async_read_write_request->iovecs;
 
-            io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
-            io_uring_sqe_set_data(sqe, async_read_request);
+            if (async_read_write_request->value.empty())
+            {
+              io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
+            }
+            else
+            {
+              io_uring_prep_writev(sqe, fd, iovecs.data(), iovecs.size(), offset);
+            }
+            io_uring_sqe_set_data(sqe, async_read_write_request);
             io_uring_submit(&iouring_worker->ring);            
           }
         });
@@ -177,50 +185,56 @@ public:
               break;
             }
 
-            auto async_read_request = reinterpret_cast<AsyncReadRequest *>(io_uring_cqe_get_data(cqe));
-            if (!async_read_request)
+            auto async_read_write_request = reinterpret_cast<AsyncReadWriteRequest *>(io_uring_cqe_get_data(cqe));
+            if (!async_read_write_request)
             {
-              info("[Background disk thread] Waiting thread: async_read_request is null, exiting...");
+              info("[Background disk thread] Waiting thread: async_read_write_request is null, exiting...");
               break;
             }
-            const auto& key = async_read_request->key;
+            const auto& key = async_read_write_request->key;
+            const auto& value = async_read_write_request->value;
 
-            char* buf = reinterpret_cast<char*>(async_read_request->iovecs[0].iov_base);
+            if (value.empty())
+            {
+              char* buf = reinterpret_cast<char*>(async_read_write_request->iovecs[0].iov_base);
 
-            auto buf_offset = 0;
-            auto read_data = [&](auto &v) {
-              memcpy(&v, buf + buf_offset, sizeof(v));
-              buf_offset += sizeof(v);
-            };
+              auto buf_offset = 0;
+              auto read_data = [&](auto &v) {
+                memcpy(&v, buf + buf_offset, sizeof(v));
+                buf_offset += sizeof(v);
+              };
 
-            uint32_t avaliable = 0;
-            read_data(avaliable);
+              uint32_t avaliable = 0;
+              read_data(avaliable);
 
-            if (!avaliable) {
-              panic("Key does not exist {}", key);
+              if (!avaliable) {
+                panic("Key does not exist {}", key);
+              }
+
+              std::size_t key_length;
+              read_data(key_length);
+
+              std::string_view key_expected(buf + buf_offset, buf + buf_offset + key_length);
+              if (key != key_expected) {
+                // panic("Key is not expected {} != {}", key, key_expected);
+              }
+
+              buf_offset += key_length;
+
+              std::size_t value_length;
+              read_data(value_length);
+
+              std::string value(buf + buf_offset, buf + buf_offset + value_length);
+              buf_offset += value_length;
+
+              // Callback
+              async_read_write_request->callback(value);
+            } else {
+              async_read_write_request->callback("");
             }
-
-            std::size_t key_length;
-            read_data(key_length);
-
-            std::string_view key_expected(buf + buf_offset, buf + buf_offset + key_length);
-            if (key != key_expected) {
-              // panic("Key is not expected {} != {}", key, key_expected);
-            }
-
-            buf_offset += key_length;
-
-            std::size_t value_length;
-            read_data(value_length);
-
-            std::string value(buf + buf_offset, buf + buf_offset + value_length);
-            buf_offset += value_length;
-
-            // Callback
-            async_read_request->callback(value);
 
             // Add back to queue
-            iouring_worker->async_read_requests.enqueue(async_read_request);
+            iouring_worker->async_read_write_requests.enqueue(async_read_write_request);
 
             io_uring_cqe_seen(&iouring_worker->ring, cqe);
           }
@@ -364,32 +378,81 @@ public:
     auto& iouring_worker = iouring_workers[id % iouring_workers.size()];
 
 #ifdef IO_URING_SUBMITTING_THREAD
-    AsyncReadRequest async_read_request;
+    AsyncReadWriteRequest async_read_write_request;
 
-    async_read_request.key = key;
-    async_read_request.callback = std::move(callback);
-    async_read_request.iovecs.resize(1);
-    auto& iovec = async_read_request.iovecs[0];
+    async_read_write_request.key = key;
+    async_read_write_request.callback = std::move(callback);
+    async_read_write_request.iovecs.resize(1);
+    auto& iovec = async_read_write_request.iovecs[0];
     iovec.iov_len = offset;
 
-    iouring_worker->async_read_submit_requests.enqueue(std::move(async_read_request));    
+    iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
     std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
     struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
-    AsyncReadRequest* async_read_request;
-    while (!iouring_worker->async_read_requests.try_dequeue(async_read_request))
+    AsyncReadWriteRequest* async_read_write_request;
+    while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
     {
-      panic("No async_read_request available!");
+      panic("No async_read_write_request available!");
     }
 
-    async_read_request->key = key;
-    async_read_request->callback = std::move(callback);
-    auto& iovecs = async_read_request->iovecs;
+    async_read_write_request->key = key;
+    async_read_write_request->callback = std::move(callback);
+    auto& iovecs = async_read_write_request->iovecs;
 
     io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
-    io_uring_sqe_set_data(sqe, async_read_request);
+    io_uring_sqe_set_data(sqe, async_read_write_request);
+    io_uring_submit(&iouring_worker->ring);
+#endif
+
+    return id;
+  }
+
+  AsyncID write_async(const std::string &key, const std::string &value, AsyncCallback callback) override {
+    if (!block_cache_config.db.block_db.async)
+    {
+      panic("Async not enabled");
+    }
+
+    const auto &block_size = block_cache_config.db.block_db.block_size;
+
+    auto index = hash_index(key);
+    auto offset = index * block_size;
+
+    auto id = current_async_id.fetch_add(1, std::memory_order::relaxed);
+    auto& iouring_worker = iouring_workers[id % iouring_workers.size()];
+
+#ifdef IO_URING_SUBMITTING_THREAD
+    AsyncReadWriteRequest async_read_write_request;
+
+    async_read_write_request.key = key;
+    async_read_write_request.value = value;
+    async_read_write_request.callback = std::move(callback);
+    async_read_write_request.iovecs.resize(1);
+    auto& iovec = async_read_write_request.iovecs[0];
+    iovec.iov_len = offset;
+
+    iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
+#else
+
+    std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+
+    AsyncReadWriteRequest* async_read_write_request;
+    while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
+    {
+      panic("No async_read_write_request available!");
+    }
+
+    async_read_write_request->key = key;
+    async_read_write_request->value = value;
+    async_read_write_request->callback = std::move(callback);
+    auto& iovecs = async_read_write_request->iovecs;
+
+    io_uring_prep_writev(sqe, fd, iovecs.data(), iovecs.size(), offset);
+    io_uring_sqe_set_data(sqe, async_read_write_request);
     io_uring_submit(&iouring_worker->ring);
 #endif
 
@@ -403,9 +466,10 @@ public:
   std::size_t size() const override { return 0; }
 
 public:
-  struct AsyncReadRequest
+  struct AsyncReadWriteRequest
   {
     std::string key;
+    std::string value;
     AsyncCallback callback;
     std::vector<struct iovec> iovecs;
   };
@@ -417,8 +481,8 @@ public:
     std::thread submitting_thread;
     std::thread waiting_thread;
     std::mutex io_uring_lock;
-    moodycamel::ConcurrentQueue<AsyncReadRequest*> async_read_requests;
-    moodycamel::ConcurrentQueue<AsyncReadRequest> async_read_submit_requests;
+    moodycamel::ConcurrentQueue<AsyncReadWriteRequest*> async_read_write_requests;
+    moodycamel::ConcurrentQueue<AsyncReadWriteRequest> async_read_write_submit_requests;
   };
 private:
   std::mutex m;
