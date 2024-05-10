@@ -238,6 +238,8 @@ public:
   virtual void remove(const KeyType &key) = 0;
   virtual void dump(std::ostream &os) = 0;
   virtual RDMAKeyValueStorage* get_rdma_key_value_storage() { return nullptr; }
+  virtual bool full() { return false; }
+  virtual void clear() { }
 
   using ReadCallback = std::function<void(const KeyType&)>;
   using WriteCallback = std::function<void(const KeyType&, const ValueType&)>;

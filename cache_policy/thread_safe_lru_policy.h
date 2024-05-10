@@ -24,9 +24,9 @@ template <typename KeyType, typename ValueType>
 class ThreadSafeLRUCache : public CachePolicy<KeyType, ValueType> {
 public:
   ThreadSafeLRUCache(BlockCacheConfig block_cache_config_,
-                     std::shared_ptr<BlockDB> block_db, uint64_t cache_size)
-      : block_cache_config(block_cache_config_), CachePolicy<KeyType, ValueType>(block_cache_config, block_db,
-                                        cache_size) {
+                     std::shared_ptr<BlockDB> block_db, uint64_t cache_size_)
+      : cache_size(cache_size_), block_cache_config(block_cache_config_),
+        CachePolicy<KeyType, ValueType>(block_cache_config, block_db, cache_size) {
     if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
     {
       rdma_key_value_storage = std::make_shared<RDMAKeyValueStorage>(block_cache_config);
@@ -76,6 +76,18 @@ public:
     }
   }
 
+  bool full() override {
+    if (secm->size() >= cache_size)
+    {
+      return true;
+    }
+    return false;
+  }
+
+  void clear() override {
+    secm->clear();
+  }
+
   void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) override {
     this->eviction_callbacks.emplace_back(callback);
     secm->add_callback_on_eviction(callback);
@@ -84,6 +96,7 @@ public:
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
 
 private:
+  size_t cache_size;
   BlockCacheConfig block_cache_config;
   std::shared_ptr<Cache> secm = nullptr;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
