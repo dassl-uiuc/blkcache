@@ -361,6 +361,7 @@ insert(const TKey& key, const TValue& value) {
 template <class TKey, class TValue, class THash>
 void ThreadSafeLRUCache<TKey, TValue, THash>::
 clear() {
+  std::lock_guard<ListMutex> lock(m_listMutex);
   m_map.clear();
   ListNode* node = m_head.m_next;
   ListNode* next;
