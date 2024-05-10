@@ -410,7 +410,7 @@ public:
     return id;
   }
 
-  AsyncID write_async(const std::string &key, const std::string &value, AsyncCallback callback) override {
+  AsyncID put_async(const std::string &key, const std::string &value, AsyncCallback callback) override {
     if (!block_cache_config.db.block_db.async)
     {
       panic("Async not enabled");
