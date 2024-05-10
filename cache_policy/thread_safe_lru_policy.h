@@ -76,6 +76,19 @@ public:
     }
   }
 
+  virtual std::vector<std::string> get_keys() override {
+    std::vector<String> keys;
+    secm->snapshotKeys(keys);
+
+    std::vector<std::string> transformed_keys;
+    transformed_keys.reserve(keys.size());
+    for (const auto& k : keys)
+    {
+      transformed_keys.emplace_back(k.data());
+    }
+    return transformed_keys;
+  }
+
   bool full() override {
     if (secm->size() >= cache_size)
     {

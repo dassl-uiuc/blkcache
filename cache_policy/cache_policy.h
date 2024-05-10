@@ -231,8 +231,7 @@ public:
   virtual void print_cache_stats() { panic("Unsupported"); }
   virtual void print_all_stats() { panic("Unsupported"); }
 
-  
-  
+  virtual std::vector<std::string> get_keys() { return {}; }
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;
