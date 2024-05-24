@@ -343,7 +343,9 @@ public:
   }
 
   void decrement_total_cache_duplication() {
-    current_duplicates.fetch_sub(1);
+    if(current_duplicates.load() > 0){
+      current_duplicates.fetch_sub(1);
+    }
   }
 
   uint64_t get_duplications_allowed() {
