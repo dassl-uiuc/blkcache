@@ -137,6 +137,18 @@ public:
     HashMapConstAccessor m_hashAccessor;
   };
 
+  using DecrementCallback = std::function<void()>;
+
+  void setDecrementCallback(DecrementCallback cb) {
+    decrement_callback_ = cb;
+  }
+
+  void callDecrementCallback() {
+    if (decrement_callback_) {
+      decrement_callback_();
+    }
+  }
+
   /**
    * Create a container with a given maximum size
    */
@@ -198,6 +210,8 @@ private:
    * this is called.
    */
   void delink(ListNode* node);
+
+  DecrementCallback decrement_callback_;
 
   /**
    * Add a new node to the list in the most-recently used position. The caller
@@ -428,6 +442,9 @@ evict() {
   for (const auto& callback : eviction_callbacks)
   {
     callback({moribund->m_key.c_str(), hashAccessor->second.m_value});
+  }
+  if(rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*moribund->key_value.key) > 1) {
+    callDecrementCallback();
   }
 
   m_map.erase(hashAccessor);

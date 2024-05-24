@@ -224,6 +224,7 @@ public:
   virtual bool is_ready() { panic("Unsupported"); }
   virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
   virtual void clear_frequency() { panic("Unsupported"); }
+  virtual void check_and_set_total_cache_duplication() { panic("Unsupported"); }
   virtual void set_keys_from_past(std::vector<std::pair<uint64_t,std::string>>& cdf) { panic("Unsupported"); }
 
   virtual void print_shadow_freq_to_a_file() { panic("Unsupported"); }

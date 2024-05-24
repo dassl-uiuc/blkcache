@@ -32,6 +32,7 @@ public:
       rdma_key_value_storage = std::make_shared<RDMAKeyValueStorage>(block_cache_config);
     }
     secm = std::make_shared<Cache>(cache_size_, block_cache_config, rdma_key_value_storage);
+    secm->setDecrementCallback([this]() { this->decrement_total_cache_duplication(); });
     access_rate = access_rate_;
     access_per_itr = access_per_itr_;
     total_accesses = 0;
@@ -74,16 +75,19 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    // if(check_if_key_access_rate_match_the_past(key)){
-    //   info("Access rate match for key: {} from its past Itr", key);
-    //   put(key, val, owning);
-    //   return true;
-    // }
-    if(get_frequency(key) >= access_rate){
+    bool should_put = true;
+    if(check_key_duplication(key)){
+      if(current_duplicates.load() > duplications_allowed.load()){
+        should_put = false;
+      }
+    }
+    if(should_put && get_frequency(key) >= access_rate){
       // info("Access rate match for key: {}", key);
       put(key, val, owning);
+      increment_total_cache_duplication();
       return true;
     }
+    
     return false;
   }
 
@@ -217,6 +221,7 @@ public:
     local_size_history.push_back(local_size_);
     remote_size_history.push_back(remote_size_);
     performance_history.push_back(performance_);
+    set_duplications_allowed(local_size_);
   }
 
   bool set_access_per_itr(uint64_t access_per_itr_) {
@@ -284,7 +289,8 @@ public:
     std::ofstream file;
     file.open("access_rate.txt");
     for (int i = 0; i < accessrate_history.size(); i++){
-      file << accessrate_history[i] << ";" << local_size_history[i] << ";" << remote_size_history[i] << ";" << performance_history[i] << std::endl;
+      file << accessrate_history[i] << ";" << local_size_history[i] << ";" << remote_size_history[i] 
+           << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";" << current_duplicates_allowed[i] << std::endl;
     }
     file << access_rate << std::endl;
     file.close();
@@ -344,6 +350,8 @@ public:
 
   void set_duplications_allowed(uint64_t duplications_allowed_) {
     duplications_allowed.store(duplications_allowed_);
+    duplication_allowed.push_back(duplications_allowed_);
+    current_duplicates_allowed.push_back(current_duplicates.load());
   }
 
   bool check_key_duplication(const KeyType &key) {
@@ -393,6 +401,9 @@ private:
   std::vector<uint64_t> local_size_history;
   std::vector<uint64_t> remote_size_history;
   std::vector<uint64_t> performance_history;
+  
+  std::vector<uint64_t> duplication_allowed;
+  std::vector<uint64_t> current_duplicates_allowed;
   
   tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
   tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past;
