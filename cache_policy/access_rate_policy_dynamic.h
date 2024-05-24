@@ -76,15 +76,18 @@ public:
            bool owning = false) override {
     update_frequency(key);
     bool should_put = true;
-    if(check_key_duplication(key)){
-      if(current_duplicates.load() > duplications_allowed.load()){
+    bool key_duplicate = check_key_duplication(key);
+    if(key_duplicate){
+      if(current_duplicates.load() >= duplications_allowed.load()){
         should_put = false;
       }
     }
     if(should_put && get_frequency(key) >= access_rate){
       // info("Access rate match for key: {}", key);
       put(key, val, owning);
-      increment_total_cache_duplication();
+      if(key_duplicate){
+        increment_total_cache_duplication();
+      }
       return true;
     }
     
