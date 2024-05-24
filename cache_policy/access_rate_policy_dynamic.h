@@ -292,7 +292,7 @@ public:
     file.open("access_rate.txt");
     for (int i = 0; i < accessrate_history.size(); i++){
       file << accessrate_history[i] << ";" << local_size_history[i] << ";" << remote_size_history[i] 
-           << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";" << current_duplicates_allowed[i] << std::endl;
+           << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";" << current_duplicates_allowed[i] << ";" << current_duplicates_set[i] << std::endl;
     }
     file << access_rate << std::endl;
     file.close();
@@ -339,11 +339,11 @@ public:
   }
 
   void increment_total_cache_duplication() {
-    current_duplicates.fetch_add(1, std::memory_order_relaxed);
+    current_duplicates.fetch_add(1);
   }
 
   void decrement_total_cache_duplication() {
-    current_duplicates.fetch_sub(1, std::memory_order_relaxed);
+    current_duplicates.fetch_sub(1);
   }
 
   uint64_t get_duplications_allowed() {
@@ -374,7 +374,8 @@ public:
         }
       }
     }
-    current_duplicates.store(total_cache_duplication);
+    current_duplicates_set.push_back(total_cache_duplication);
+    // current_duplicates.store(total_cache_duplication);
   }
 
 
@@ -406,6 +407,7 @@ private:
   
   std::vector<uint64_t> duplication_allowed;
   std::vector<uint64_t> current_duplicates_allowed;
+  std::vector<uint64_t> current_duplicates_set;
   
   tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
   tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past;
