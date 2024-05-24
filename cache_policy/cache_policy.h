@@ -215,6 +215,7 @@ public:
   virtual std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {panic("Unsupported"); }
   virtual std::pair<uint64_t, uint64_t> get_access_rate_and_access_per_itr() {panic("Unsupported");}
   virtual bool set_access_rate(uint64_t access_rate_) {panic("Unsupported");}
+  virtual void set_perf_stats(uint64_t local_size_, uint64_t remote_size_, uint64_t performance_) {panic("Unsupported");}
   virtual bool set_access_per_itr(uint64_t access_per_itr_) { panic("Unsupported"); }
   virtual std::tuple<uint64_t, uint64_t, uint64_t> get_water_marks() { panic("Unsupported"); }
   virtual void set_water_marks(uint64_t water_mark_local_, uint64_t water_mark_remote_) { panic("Unsupported"); }

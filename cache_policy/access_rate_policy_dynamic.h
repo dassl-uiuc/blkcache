@@ -58,6 +58,7 @@ public:
     for (const auto& callback : this->write_callbacks) {
       callback(key, val);
     }
+
   }
 
   bool check_if_key_access_rate_match_the_past(const KeyType &key) {
@@ -212,6 +213,12 @@ public:
     return true;
   }
 
+  void set_perf_stats(uint64_t local_size_, uint64_t remote_size_, uint64_t performance_) {
+    local_size_history.push_back(local_size_);
+    remote_size_history.push_back(remote_size_);
+    performance_history.push_back(performance_);
+  }
+
   bool set_access_per_itr(uint64_t access_per_itr_) {
     access_per_itr = access_per_itr_;
     return true;
@@ -276,8 +283,8 @@ public:
   void print_access_rate(){
     std::ofstream file;
     file.open("access_rate.txt");
-    for (auto& rate : accessrate_history){
-      file << rate << std::endl;
+    for (int i = 0; i < accessrate_history.size(); i++){
+      file << accessrate_history[i] << ";" << local_size_history[i] << ";" << remote_size_history[i] << ";" << performance_history[i] << std::endl;
     }
     file << access_rate << std::endl;
     file.close();
@@ -316,23 +323,48 @@ public:
   }
 
   uint64_t get_total_cache_duplication() {
-    return Total_cache_duplication.load();
+    return current_duplicates.load();
   }
 
   void set_total_cache_duplication(uint64_t total_cache_duplication_) {
-    Total_cache_duplication.store(total_cache_duplication_);
+    current_duplicates.store(total_cache_duplication_);
   }
 
-  void update_total_cache_duplication(uint64_t total_cache_duplication_) {
-    Total_cache_duplication.fetch_add(total_cache_duplication_, std::memory_order_relaxed);
+  void increment_total_cache_duplication() {
+    current_duplicates.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  void decrement_total_cache_duplication() {
+    current_duplicates.fetch_sub(1, std::memory_order_relaxed);
   }
 
   uint64_t get_duplications_allowed() {
-    return duplications_allowed;
+    return duplications_allowed.load();
   }
 
   void set_duplications_allowed(uint64_t duplications_allowed_) {
-    duplications_allowed = duplications_allowed_;
+    duplications_allowed.store(duplications_allowed_);
+  }
+
+  bool check_key_duplication(const KeyType &key) {
+    int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(std::stoi(key.c_str()));
+    if (replication_count > 1) {
+      return true;
+    }
+    return false;
+  }
+
+  void check_and_set_total_cache_duplication() {
+    uint64_t total_cache_duplication = 0;
+    for (int i = 0; i < block_db_num_entries; i++) {
+      if(exist(std::to_string(i))){
+        int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(i);
+        if (replication_count > 1) {
+          total_cache_duplication += replication_count - 1;
+        }
+      }
+    }
+    current_duplicates.store(total_cache_duplication);
   }
 
 
@@ -342,8 +374,9 @@ private:
   std::shared_ptr<Cache> secm = nullptr;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage = nullptr;
   std::atomic<uint64_t> total_accesses;
-  std::atomic<uint64_t> Total_cache_duplication;
-  uint64_t duplications_allowed;
+  std::atomic<uint64_t> current_duplicates;
+  std::atomic<uint64_t> duplications_allowed;
+
   std::atomic<bool> is_clearing;
 
   uint64_t access_rate;
@@ -357,6 +390,9 @@ private:
   uint64_t cache_size;
 
   std::vector<uint64_t> accessrate_history;
+  std::vector<uint64_t> local_size_history;
+  std::vector<uint64_t> remote_size_history;
+  std::vector<uint64_t> performance_history;
   
   tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
   tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past;
