@@ -17,6 +17,8 @@ typedef tstarling::ThreadSafeStringKey String;
 typedef String::HashCompare HashCompare;
 
 using RDMAFriendlyString = tstarling::ThreadSafeStringKey;
+using CDFType = std::pair<std::vector<std::tuple<uint64_t, std::string, uint64_t>>,
+              std::map<std::string, std::pair<uint64_t, uint64_t>>>;
 
 template <typename KeyType, typename ValueType>
 class ThreadSafeLRUAccessRateDynamicCache : public CachePolicy<KeyType, ValueType> {
@@ -75,21 +77,34 @@ public:
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     update_frequency(key);
-    bool should_put = true;
+    bool should_put = false;
+    bool dup_check = true;
     if(check_key_duplication(key)){
       if(current_duplicates.load() >= duplications_allowed.load()){
-        should_put = false;
+        dup_check = false;
       }
     }
-    if(should_put && get_frequency(key) >= access_rate){
-      // info("Access rate match for key: {}", key);
+    if(dup_check && get_past_bucket(key) < bucket_id)
+    {
+      should_put = true;
+
+    } else {
+      if (dup_check && get_past_bucket(key) == bucket_id)
+      {
+        if(stoi(key) >= key_id_cutoff){
+          should_put = true;
+        } else {
+          should_put = false;
+        }
+      }
+    }
+    if(should_put){
       put(key, val, owning);
       if(check_key_duplication(key)){
         increment_total_cache_duplication();
       }
       return true;
     }
-    
     return false;
   }
 
@@ -134,7 +149,15 @@ public:
   using ConstFrequencyAccessor = tbb::concurrent_hash_map<KeyType, uint64_t>::const_accessor;
   using FrequencyAccessor = tbb::concurrent_hash_map<KeyType, uint64_t>::accessor;
 
-  uint64_t get_frequency(const KeyType& key) {
+  uint64_t get_past_bucket(const KeyType& key) {
+    ConstFrequencyAccessor acc;
+    if (keys_from_past.find(acc, key)) {
+      return acc->second;
+    }
+    return 0;
+  }
+  
+  uint64_t get_current_bucket(const KeyType& key) {
     ConstFrequencyAccessor acc;
     if (key_freq.find(acc, key)) {
       return acc->second;
@@ -179,22 +202,22 @@ public:
     // return shadow_freq;
   }
   
-  void set_keys_from_past(std::vector<std::pair<uint64_t,std::string>>& cdf) {
+  void set_keys_from_past(std::vector<std::tuple<uint64_t, std::string, uint64_t>>& cdf) {
     bool found = false;
     for (auto& it : cdf) {
       found = false;
       {
         FrequencyAccessor acc;
-        if (key_freq.find(acc, it.second)) {
-          acc->second = it.first;
+        if (keys_from_past.find(acc, std::get<1>(it))) {
+          acc->second = std::get<2>(it);
           found = true;
         }
       }
       if (!found)
       {
         FrequencyAccessor acc;
-        key_freq.insert(acc, it.second);
-        acc->second = it.first;
+        keys_from_past.insert(acc, std::get<1>(it));
+        acc->second = std::get<2>(it);
       }
     }
   }
@@ -292,7 +315,10 @@ public:
     file.open("access_rate.txt");
     for (int i = 0; i < accessrate_history.size(); i++){
       file << accessrate_history[i] << ";" << local_size_history[i] << ";" << remote_size_history[i] 
-           << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";" << current_duplicates_allowed[i] << ";" << current_duplicates_set[i] << std::endl;
+           << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";"
+           << current_duplicates_allowed[i] << ";" << current_duplicates_set[i]
+           << ";" << bucket_id_history[i] << ";" << key_id_cutoff_history[i]
+           << std::endl;
     }
     file << access_rate << std::endl;
     file.close();
@@ -380,6 +406,24 @@ public:
     // current_duplicates.store(total_cache_duplication);
   }
 
+  void set_bucket_id(uint64_t bucket_id_) {
+    bucket_id = bucket_id_;
+    bucket_id_history.push_back(bucket_id);
+  }
+
+  uint64_t get_bucket_id() {
+    return bucket_id;
+  }
+
+  void set_key_id_cutoff(uint64_t key_id_cutoff_) {
+    key_id_cutoff = key_id_cutoff_;
+    key_id_cutoff_history.push_back(key_id_cutoff);
+  }
+
+  uint64_t get_key_id_cutoff() {
+    return key_id_cutoff;
+  }
+
 
 
 private:
@@ -402,6 +446,9 @@ private:
   uint64_t block_db_num_entries;
   uint64_t cache_size;
 
+  uint64_t bucket_id;
+  uint64_t key_id_cutoff;
+
   std::vector<uint64_t> accessrate_history;
   std::vector<uint64_t> local_size_history;
   std::vector<uint64_t> remote_size_history;
@@ -410,10 +457,13 @@ private:
   std::vector<uint64_t> duplication_allowed;
   std::vector<uint64_t> current_duplicates_allowed;
   std::vector<uint64_t> current_duplicates_set;
+
+  std::vector<uint64_t> bucket_id_history;
+  std::vector<uint64_t> key_id_cutoff_history;
   
-  tbb::concurrent_hash_map<KeyType, uint64_t> key_freq;
-  tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past;
-  std::vector<std::pair<KeyType, uint64_t>> shadow_freq;
+  tbb::concurrent_hash_map<KeyType, uint64_t> key_freq; // <key, freq>
+  tbb::concurrent_hash_map<KeyType, uint64_t> keys_from_past; // <key, BucketID>
+  std::vector<std::pair<KeyType, uint64_t>> shadow_freq; // 
   std::mutex key_freq_mutex;
   std::mutex clear_freq_lock;
 };

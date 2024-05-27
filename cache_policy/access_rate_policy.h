@@ -208,11 +208,11 @@ public:
     return cache_size;
   }
 
-  void set_keys_under_l(const std::vector<KeyType>& keys) {
-    for (const auto& key : keys) {
-      keys_to_duplicate.insert(std::make_pair(key, 0));
-    }
-  }
+  // void set_keys_under_l(const std::vector<KeyType>& keys) {
+  //   for (const auto& key : keys) {
+  //     keys_to_duplicate.insert(std::make_pair(key, 0));
+  //   }
+  // }
   
   void print_shadow_freq_to_a_file(){
     std::ofstream file;

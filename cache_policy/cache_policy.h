@@ -222,10 +222,13 @@ public:
   virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
   virtual uint64_t get_cache_size() { panic("Unsupported"); }
   virtual bool is_ready() { panic("Unsupported"); }
-  virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
+  // virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
   virtual void clear_frequency() { panic("Unsupported"); }
   virtual void check_and_set_total_cache_duplication() { panic("Unsupported"); }
-  virtual void set_keys_from_past(std::vector<std::pair<uint64_t,std::string>>& cdf) { panic("Unsupported"); }
+  virtual void set_keys_from_past(std::vector<std::tuple<uint64_t, std::string, uint64_t>>& cdf) { panic("Unsupported"); }
+
+  virtual void set_bucket_id(uint64_t bucket_id_) { panic("Unsupported"); }
+  virtual void set_key_id_cutoff(uint64_t key_id_cutoff_) { panic("Unsupported"); }
 
   virtual void print_shadow_freq_to_a_file() { panic("Unsupported"); }
   virtual void print_key_freq_to_a_file() { panic("Unsupported"); }
@@ -249,7 +252,8 @@ public:
 
   using ClearFrequencyCallback = std::function<void(std::vector<std::pair<KeyType, uint64_t>>&)>;
   virtual void add_callback_on_clear_frequency(ClearFrequencyCallback callback) { clear_frequency_callbacks.emplace_back(callback); }
-
+  using CDFType = std::pair<std::vector<std::tuple<uint64_t, std::string, uint64_t>>,
+              std::map<std::string, std::pair<uint64_t, uint64_t>>>;
 protected:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<BlockDB> block_db;
