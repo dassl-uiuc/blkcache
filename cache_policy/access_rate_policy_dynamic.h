@@ -93,8 +93,6 @@ public:
         info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
         if(stoi(key) >= key_id_cutoff){
           should_put = true;
-        } else {
-          should_put = false;
         }
       }
     }
