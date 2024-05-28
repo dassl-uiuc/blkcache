@@ -78,7 +78,6 @@ public:
            bool owning = false) override {
     update_frequency(key);
     bool should_put = false;
-    bool dup_check = true;
     
     if(current_duplicates.load() >= duplications_allowed.load()){
       return false;
@@ -89,7 +88,7 @@ public:
       info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
       should_put = true;
     } else {
-      if (dup_check && get_past_bucket(key) == bucket_id)
+      if (get_past_bucket(key) == bucket_id)
       {
         info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
         if(stoi(key) >= key_id_cutoff){
@@ -102,9 +101,7 @@ public:
     if(should_put){
       info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
       put(key, val, owning);
-      if(check_key_duplication(key)){
-        increment_total_cache_duplication();
-      }
+      increment_total_cache_duplication();
       return true;
     }
     return false;
