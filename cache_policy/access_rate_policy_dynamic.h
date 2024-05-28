@@ -327,6 +327,7 @@ public:
            << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";"
            << current_duplicates_allowed[i] << ";" << current_duplicates_set[i]
            << ";" << bucket_id_history[i] << ";" << key_id_cutoff_history[i]
+           << ";" << cache_dup_addition.load() << ";" << cache_dup_subtraction.load()
            << std::endl;
     }
     file << access_rate << std::endl;
@@ -374,10 +375,12 @@ public:
   }
 
   void increment_total_cache_duplication() {
+    cache_dup_addition.fetch_add(1);
     current_duplicates.fetch_add(1);
   }
 
   void decrement_total_cache_duplication() {
+    cache_dup_subtraction.fetch_add(1);
     if(current_duplicates.load() > 0){
       current_duplicates.fetch_sub(1);
     }
@@ -457,6 +460,9 @@ private:
 
   uint64_t bucket_id;
   uint64_t key_id_cutoff;
+
+  std::atomic<uint64_t> cache_dup_addition;
+  std::atomic<uint64_t> cache_dup_subtraction;
 
   std::vector<uint64_t> accessrate_history;
   std::vector<uint64_t> local_size_history;
