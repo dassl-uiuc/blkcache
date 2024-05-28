@@ -329,6 +329,8 @@ public:
            << ";" << bucket_id_history[i] << ";" << key_id_cutoff_history[i]
            << ";" << cache_dup_addition.load() << ";" << cache_dup_subtraction.load()
            << std::endl;
+      info("access_rate: {} and local_size: {} and remote_size: {} and performance: {} and duplication_allowed: {} and current_duplicates_allowed: {} and current_duplicates_set: {} and bucket_id: {} and key_id_cutoff: {} and cache_dup_addition: {} and cache_dup_subtraction: {}", 
+            accessrate_history[i], local_size_history[i], remote_size_history[i], performance_history[i], duplication_allowed[i], current_duplicates_allowed[i], current_duplicates_set[i], bucket_id_history[i], key_id_cutoff_history[i], cache_dup_addition.load(), cache_dup_subtraction.load());
     }
     file << access_rate << std::endl;
     file.close();
