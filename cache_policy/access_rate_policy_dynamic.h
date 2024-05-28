@@ -85,19 +85,19 @@ public:
 
     if(get_past_bucket(key) < bucket_id)
     {
-      info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
+      // info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
       should_put = true;
     } else {
       if (get_past_bucket(key) == bucket_id)
       {
-        info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
+        // info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
         if(stoi(key) >= key_id_cutoff){
           should_put = true;
         }
       }
     }
     if(should_put){
-      info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
+      // info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
       put(key, val, owning);
       increment_total_cache_duplication();
       return true;
