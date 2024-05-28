@@ -208,16 +208,25 @@ public:
       found = false;
       {
         FrequencyAccessor acc;
-        if (keys_from_past.find(acc, std::get<1>(it))) {
-          acc->second = std::get<2>(it);
+        if (key_freq.find(acc, std::get<1>(it))) {
+          acc->second = std::get<0>(it);
           found = true;
         }
       }
       if (!found)
       {
         FrequencyAccessor acc;
-        keys_from_past.insert(acc, std::get<1>(it));
-        acc->second = std::get<2>(it);
+        key_freq.insert(acc, std::get<1>(it));
+        acc->second = std::get<0>(it);
+      }
+      {
+        FrequencyAccessor acc_bucket;
+        if (keys_from_past.find(acc_bucket, std::get<1>(it))) {
+          acc_bucket->second = std::get<2>(it);
+        } else {
+          keys_from_past.insert(acc_bucket, std::get<1>(it));
+          acc_bucket->second = std::get<2>(it);
+        }
       }
     }
   }
