@@ -201,12 +201,16 @@ public:
   
   void set_keys_from_past(std::vector<std::tuple<uint64_t, std::string, uint64_t>>& cdf) {
     bool found = false;
+    clear_cdf.fetch_add(1);
     for (auto& it : cdf) {
       found = false;
       {
         FrequencyAccessor acc;
         if (key_freq.find(acc, std::get<1>(it))) {
           acc->second = std::get<0>(it);
+          if(clear_cdf.load() % 2 == 1){
+            acc->second = 0;
+          }
           found = true;
         }
       }
@@ -215,6 +219,9 @@ public:
         FrequencyAccessor acc;
         key_freq.insert(acc, std::get<1>(it));
         acc->second = std::get<0>(it);
+        if(clear_cdf.load() % 2 == 1){
+            acc->second = 0;
+        }
       }
       {
         FrequencyAccessor acc_bucket;
@@ -408,8 +415,8 @@ public:
     for (int i = 0; i < block_db_num_entries; i++) {
       if(exist(std::to_string(i))){
         int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(i);
-        if (replication_count > 1) {
-          total_cache_duplication += replication_count - 1;
+        if (replication_count == 2) {
+          total_cache_duplication++;
         }
       }
     }
@@ -444,6 +451,8 @@ private:
   std::atomic<uint64_t> total_accesses;
   std::atomic<uint64_t> current_duplicates;
   std::atomic<uint64_t> duplications_allowed;
+
+  std::atomic<uint64_t> clear_cdf;
 
   std::atomic<bool> is_clearing;
 
