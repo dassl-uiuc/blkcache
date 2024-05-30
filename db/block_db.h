@@ -258,7 +258,7 @@ public:
 
       auto NUM_ASYNC_REQUEST_THREADS = 4;
       async_io_submit_workers.reserve(NUM_ASYNC_REQUEST_THREADS);
-      for (auto i = 0; i < async_io_submit_workers.size(); i++)
+      for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
       {
         auto async_io_submit_worker = std::make_shared<AsyncIOSubmitWorker>();
         async_io_submit_worker->async_request_thread = std::thread([&]()
