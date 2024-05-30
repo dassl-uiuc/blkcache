@@ -512,6 +512,7 @@ public:
     auto id = current_async_submit_id.fetch_add(1, std::memory_order::relaxed);
     auto& async_io_submit_worker = async_io_submit_workers[id % async_io_submit_workers.size()];
 
+    info("SUBMIT QUEUE {}", id);
     async_io_submit_worker->async_request_queue.enqueue(async_request);
     return id;
   }
