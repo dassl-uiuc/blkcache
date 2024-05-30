@@ -518,6 +518,7 @@ public:
   }
 
   AsyncID get_async_submit(const std::string &key, AsyncCallback callback) override {
+    info("GET ASYNC SUBMIT {}", key);
     auto is_read = true;
     AsyncRequest async_request{key, {}, is_read, callback};
     return async_submit(async_request);
