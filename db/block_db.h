@@ -121,10 +121,10 @@ public:
         
         // Init ring
         io_uring_params params{};
-        params.flags |= IORING_SETUP_SQPOLL;
-        params.sq_thread_idle = 2000;
+        // params.flags |= IORING_SETUP_SQPOLL;
+        // params.sq_thread_idle = 2000;
         io_uring_queue_init_params(block_cache_config.db.block_db.io_uring_ring_size, &iouring_worker->ring, &params);
-        io_uring_register_files(&iouring_worker->ring, &fd, 1); // required for sq polling
+        // io_uring_register_files(&iouring_worker->ring, &fd, 1); // required for sq polling
 
         // Init read requests
         for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
