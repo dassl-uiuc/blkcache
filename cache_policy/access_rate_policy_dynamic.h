@@ -441,9 +441,17 @@ public:
   uint64_t get_key_id_cutoff() {
     return key_id_cutoff;
   }
+  
+  void set_bucket_cumulative_sum(std::map<uint64_t, uint64_t>& cdf) {
+    for (int i = 0; i < cdf.size(); i++) {
+      bucket_cumulative_sum[i] = cdf[i];
+    }
+  }
 
-
-
+  std::map<uint64_t, uint64_t> get_bucket_cumulative_sum() {
+    return bucket_cumulative_sum;
+  }
+  
 private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<Cache> secm = nullptr;
@@ -451,6 +459,7 @@ private:
   std::atomic<uint64_t> total_accesses;
   std::atomic<uint64_t> current_duplicates;
   std::atomic<uint64_t> duplications_allowed;
+  std::map<uint64_t, uint64_t> bucket_cumulative_sum;
 
   std::atomic<uint64_t> clear_cdf;
 

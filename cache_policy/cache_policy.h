@@ -229,6 +229,8 @@ public:
 
   virtual void set_bucket_id(uint64_t bucket_id_) { panic("Unsupported"); }
   virtual void set_key_id_cutoff(uint64_t key_id_cutoff_) { panic("Unsupported"); }
+  virtual void set_bucket_cumulative_sum(std::map<uint64_t, uint64_t>& cdf) { panic("Unsupported"); }
+  virtual std::map<uint64_t, uint64_t> get_bucket_cumulative_sum() { panic("Unsupported"); }
 
   virtual void print_shadow_freq_to_a_file() { panic("Unsupported"); }
   virtual void print_key_freq_to_a_file() { panic("Unsupported"); }
