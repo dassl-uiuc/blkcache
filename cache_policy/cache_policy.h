@@ -238,13 +238,14 @@ public:
   virtual void print_cache_stats() { panic("Unsupported"); }
   virtual void print_all_stats() { panic("Unsupported"); }
 
-  
-  
+  virtual std::vector<std::string> get_keys() { return {}; }
   virtual ValueType get(const KeyType &key) = 0;
   virtual bool exist(const KeyType &key) = 0;
   virtual void remove(const KeyType &key) = 0;
   virtual void dump(std::ostream &os) = 0;
   virtual RDMAKeyValueStorage* get_rdma_key_value_storage() { return nullptr; }
+  virtual bool full() { return false; }
+  virtual void clear() { }
 
   using ReadCallback = std::function<void(const KeyType&)>;
   using WriteCallback = std::function<void(const KeyType&, const ValueType&)>;
