@@ -42,9 +42,9 @@ public:
            bool owning = false) override {
     String skey(key.c_str(), key.length());
     secm->insert(skey, val);
-    // for (const auto& callback : this->write_callbacks) {
-    //   callback(key, val);
-    // }
+    for (const auto& callback : this->write_callbacks) {
+      callback(key, val);
+    }
   }
 
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
