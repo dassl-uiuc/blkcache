@@ -261,7 +261,7 @@ public:
       for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
       {
         auto async_io_submit_worker = std::make_shared<AsyncIOSubmitWorker>();
-        async_io_submit_worker->async_request_thread = std::thread([&]()
+        async_io_submit_worker->async_request_thread = std::thread([&, async_io_submit_worker]()
         {
           while (!g_stop)
           {
@@ -277,7 +277,6 @@ public:
             const auto& value = async_request.value;
             const auto& is_read = async_request.is_read;
             const auto& async_callback = async_request.async_callback;
-              info("GOT RREQUEST {} {}", key, value);
             if (is_read)
             {
               this->get_async(key, std::move(async_callback));
@@ -512,13 +511,11 @@ public:
     auto id = current_async_submit_id.fetch_add(1, std::memory_order::relaxed);
     auto& async_io_submit_worker = async_io_submit_workers[id % async_io_submit_workers.size()];
 
-    info("SUBMIT QUEUE {}", id);
     async_io_submit_worker->async_request_queue.enqueue(async_request);
     return id;
   }
 
   AsyncID get_async_submit(const std::string &key, AsyncCallback callback) override {
-    info("GET ASYNC SUBMIT {}", key);
     auto is_read = true;
     AsyncRequest async_request{key, {}, is_read, callback};
     return async_submit(async_request);
