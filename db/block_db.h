@@ -277,6 +277,7 @@ public:
             const auto& value = async_request.value;
             const auto& is_read = async_request.is_read;
             const auto& async_callback = async_request.async_callback;
+              info("GOT RREQUEST {} {}", key, value);
             if (is_read)
             {
               this->get_async(key, std::move(async_callback));
