@@ -224,9 +224,9 @@ public:
               uint32_t avaliable = 0;
               read_data(avaliable);
 
-              if (!avaliable) {
-                panic("Key does not exist {}", key);
-              }
+              // if (!avaliable) {
+              //   panic("Key does not exist {}", key);
+              // }
 
               std::size_t key_length;
               read_data(key_length);
