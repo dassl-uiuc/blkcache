@@ -283,6 +283,7 @@ public:
             }
             else
             {
+              info("PUT_ ASyNC");
               this->put_async(key, value, std::move(async_callback));
             }
           }
