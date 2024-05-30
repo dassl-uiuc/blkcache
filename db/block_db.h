@@ -16,6 +16,14 @@ constexpr auto BLOCK_DB_SIZE = 4096u;
 
 // #define IO_URING_SUBMITTING_THREAD
 
+struct AsyncRequest
+{
+  std::string key;
+  std::string value;
+  bool is_read;
+  AsyncCallback async_callback;
+};
+
 class BlockDB : public DB {
 public:
   virtual ~BlockDB() {
@@ -48,10 +56,15 @@ public:
             delete async_read_write_request;
           }
         }
+        for (auto& async_request_thread : async_request_threads)
+        {
+          async_request_thread.join();
+        }
       }
       ::close(fd);
     }
   }
+
   void init(BlockCacheConfig block_cache_config) override {
     DB::init(block_cache_config);
 
@@ -241,6 +254,33 @@ public:
         });
 
         iouring_workers.emplace_back(iouring_worker);
+      }
+
+      constexpr auto NUM_ASYNC_REQUEST_THREADS = 1;
+      for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
+      {
+        async_request_threads.emplace_back(std::thread([&]()
+        {
+          while (!g_stop)
+          {
+            AsyncRequest async_request;
+            while (async_request_queue.try_dequeue(async_request))
+            {
+              const auto& key = async_request.key;
+              const auto& value = async_request.value;
+              const auto& is_read = async_request.is_read;
+              auto& async_callback = async_request.async_callback;
+              if (is_read)
+              {
+                this->get_async(key, std::move(async_callback));
+              }
+              else
+              {
+                this->put_async(key, value, std::move(async_callback));
+              }
+            }
+          }
+        }));
       }
     }
   }
@@ -459,6 +499,20 @@ public:
     return id;
   }
 
+  AsyncID get_async_submit(const std::string &key, AsyncCallback callback) override {
+    auto is_read = true;
+    AsyncRequest async_request{key, {}, is_read, callback};
+    async_request_queue.enqueue(async_request);
+    return 0;
+  }
+
+  AsyncID put_async_submit(const std::string &key, const std::string &value, AsyncCallback callback) override {
+    auto is_read = false;
+    AsyncRequest async_request{key, value, is_read, callback};
+    async_request_queue.enqueue(async_request);
+    return 0;
+  }
+
   DBError remove(const std::string &key) override {
     return DBError::Unimplemented;
   }
@@ -494,4 +548,7 @@ private:
 
   std::atomic<uint64_t> current_async_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_workers;
+
+  MPMCQueue<AsyncRequest> async_request_queue;
+  std::vector<std::thread> async_request_threads;
 };
