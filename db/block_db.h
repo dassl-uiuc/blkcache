@@ -256,7 +256,7 @@ public:
         iouring_workers.emplace_back(iouring_worker);
       }
 
-      constexpr auto NUM_ASYNC_REQUEST_THREADS = 1;
+      constexpr auto NUM_ASYNC_REQUEST_THREADS = num_iouring_workers;
       for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
       {
         async_request_threads.emplace_back(std::thread([&]()
