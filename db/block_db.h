@@ -56,9 +56,9 @@ public:
             delete async_read_write_request;
           }
         }
-        for (auto& async_request_thread : async_request_threads)
+        for (auto& async_io_submit_worker : async_io_submit_workers)
         {
-          async_request_thread.join();
+          async_io_submit_worker->async_request_thread.join();
         }
       }
       ::close(fd);
@@ -257,30 +257,38 @@ public:
       }
 
       auto NUM_ASYNC_REQUEST_THREADS = 4;
-      for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
+      async_io_submit_workers.reserve(NUM_ASYNC_REQUEST_THREADS);
+      for (auto i = 0; i < async_io_submit_workers.size(); i++)
       {
-        async_request_threads.emplace_back(std::thread([&]()
+        auto async_io_submit_worker = std::make_shared<AsyncIOSubmitWorker>();
+        async_io_submit_worker->async_request_thread = std::thread([&]()
         {
           while (!g_stop)
           {
             AsyncRequest async_request;
-            while (async_request_queue.try_dequeue(async_request))
+            while (!async_io_submit_worker->async_request_queue.try_dequeue(async_request))
             {
-              const auto& key = async_request.key;
-              const auto& value = async_request.value;
-              const auto& is_read = async_request.is_read;
-              const auto& async_callback = async_request.async_callback;
-              if (is_read)
+              if (g_stop)
               {
-                this->get_async(key, std::move(async_callback));
-              }
-              else
-              {
-                this->put_async(key, value, std::move(async_callback));
+                break;
               }
             }
+            const auto& key = async_request.key;
+            const auto& value = async_request.value;
+            const auto& is_read = async_request.is_read;
+            const auto& async_callback = async_request.async_callback;
+            if (is_read)
+            {
+              this->get_async(key, std::move(async_callback));
+            }
+            else
+            {
+              this->put_async(key, value, std::move(async_callback));
+            }
           }
-        }));
+        });
+
+        async_io_submit_workers.emplace_back(async_io_submit_worker);
       }
     }
   }
@@ -499,18 +507,24 @@ public:
     return id;
   }
 
+  AsyncID async_submit(AsyncRequest async_request) {
+    auto id = current_async_submit_id.fetch_add(1, std::memory_order::relaxed);
+    auto& async_io_submit_worker = async_io_submit_workers[id % async_io_submit_workers.size()];
+
+    async_io_submit_worker->async_request_queue.enqueue(async_request);
+    return id;
+  }
+
   AsyncID get_async_submit(const std::string &key, AsyncCallback callback) override {
     auto is_read = true;
     AsyncRequest async_request{key, {}, is_read, callback};
-    async_request_queue.enqueue(async_request);
-    return 0;
+    return async_submit(async_request);
   }
 
   AsyncID put_async_submit(const std::string &key, const std::string &value, AsyncCallback callback) override {
     auto is_read = false;
     AsyncRequest async_request{key, value, is_read, callback};
-    async_request_queue.enqueue(async_request);
-    return 0;
+    return async_submit(async_request);
   }
 
   DBError remove(const std::string &key) override {
@@ -538,6 +552,13 @@ public:
     moodycamel::ConcurrentQueue<AsyncReadWriteRequest*> async_read_write_requests;
     moodycamel::ConcurrentQueue<AsyncReadWriteRequest> async_read_write_submit_requests;
   };
+
+  struct AsyncIOSubmitWorker
+  {
+    moodycamel::ConcurrentQueue<AsyncRequest> async_request_queue;
+    std::thread async_request_thread;
+  };
+
 private:
   std::mutex m;
   std::unordered_map<std::string, int> key_to_offset;
@@ -548,7 +569,6 @@ private:
 
   std::atomic<uint64_t> current_async_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_workers;
-
-  MPMCQueue<AsyncRequest> async_request_queue;
-  std::vector<std::thread> async_request_threads;
+  std::atomic<uint64_t> current_async_submit_id{};
+  std::vector<std::shared_ptr<AsyncIOSubmitWorker>> async_io_submit_workers;
 };
