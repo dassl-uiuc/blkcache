@@ -269,7 +269,7 @@ public:
               const auto& key = async_request.key;
               const auto& value = async_request.value;
               const auto& is_read = async_request.is_read;
-              auto& async_callback = async_request.async_callback;
+              const auto& async_callback = async_request.async_callback;
               if (is_read)
               {
                 this->get_async(key, std::move(async_callback));
