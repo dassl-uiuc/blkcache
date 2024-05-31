@@ -370,6 +370,18 @@ public:
                 while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
                 {
                   info("No async_read_write_request available! - Batch");
+                  async_read_write_request = new AsyncReadWriteRequest{};
+                  auto& iovecs = async_read_write_request->iovecs;
+                  iovecs.resize(IO_VEC_ALLOCATION_SIZE);
+                  for (auto& iovec : iovecs)
+                  {
+                    if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
+                      perror("posix_memalign");
+                      exit(EXIT_FAILURE);
+                    }
+                    iovec.iov_len = BLOCK_DB_SIZE;
+                  }
+
                   break;
                 }
 
