@@ -273,7 +273,7 @@ public:
       for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
       {
         auto async_io_submit_worker = std::make_shared<AsyncIOSubmitWorker>();
-        async_io_submit_worker->async_request_thread = std::thread([&, async_io_submit_worker]()
+        async_io_submit_worker->async_request_thread = std::thread([&, async_io_submit_worker, batch_write_size = block_cache_config.db.block_db.io_uring_ring_size]()
         {
           bool batch_writes = true;
           auto batch_write_current_size = 0;
