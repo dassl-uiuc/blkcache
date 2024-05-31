@@ -131,7 +131,8 @@ public:
         // io_uring_register_files(&iouring_worker->ring, &fd, 1); // required for sq polling
 
         // Init read requests
-        for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
+        // for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
+        for (auto i = 0; i < 1024 * 1024; i++)
         {
           auto async_read_write_request = new AsyncReadWriteRequest{};
           auto& iovecs = async_read_write_request->iovecs;
@@ -313,7 +314,7 @@ public:
                 AsyncReadWriteRequest* async_read_write_request;
                 while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
                 {
-                  panic("No async_read_write_request available!");
+                  panic("No async_read_write_request available! - Batch");
                 }
 
                 async_read_write_request->key = key;
@@ -493,7 +494,7 @@ public:
     AsyncReadWriteRequest* async_read_write_request;
     while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
     {
-      panic("No async_read_write_request available!");
+      panic("No async_read_write_request available! - Get");
     }
 
     async_read_write_request->key = key;
@@ -541,7 +542,7 @@ public:
     AsyncReadWriteRequest* async_read_write_request;
     while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
     {
-      panic("No async_read_write_request available!");
+      panic("No async_read_write_request available! - Put");
     }
 
     async_read_write_request->key = key;
