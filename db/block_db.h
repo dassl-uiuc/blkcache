@@ -34,62 +34,62 @@ public:
     if (fd) {
       if (block_cache_config.db.block_db.async)
       {
-        for (auto& iouring_worker : iouring_workers)
-        {
-          iouring_worker->stop = true;
-          
-          struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
-          io_uring_prep_shutdown(sqe, fd, 0);
-          io_uring_submit(&iouring_worker->ring);
-        }
-        for (auto& iouring_worker : iouring_workers)
-        {
-#ifdef IO_URING_SUBMITTING_THREAD
-          iouring_worker->submitting_thread.join();
-#endif
-          iouring_worker->waiting_thread.join();
-          io_uring_queue_exit(&iouring_worker->ring);
-
-          AsyncReadWriteRequest* async_read_write_request;
-          while (iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
-          {
-            for (auto& iovec : async_read_write_request->iovecs)
-            {
-              free(iovec.iov_base);
-            }
-            delete async_read_write_request;
-          }
-        }
-        for (auto& iouring_worker : iouring_write_workers)
-        {
-          iouring_worker->stop = true;
-          
-          struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
-          io_uring_prep_shutdown(sqe, fd, 0);
-          io_uring_submit(&iouring_worker->ring);
-        }
-        for (auto& iouring_worker : iouring_write_workers)
-        {
-#ifdef IO_URING_SUBMITTING_THREAD
-          iouring_worker->submitting_thread.join();
-#endif
-          iouring_worker->waiting_thread.join();
-          io_uring_queue_exit(&iouring_worker->ring);
-
-          AsyncReadWriteRequest* async_read_write_request;
-          while (iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
-          {
-            for (auto& iovec : async_read_write_request->iovecs)
-            {
-              free(iovec.iov_base);
-            }
-            delete async_read_write_request;
-          }
-        }
         for (auto& async_io_submit_worker : async_io_submit_workers)
         {
           async_io_submit_worker->stop = true;
           async_io_submit_worker->async_request_thread.join();
+        }
+        for (auto& iouring_worker : iouring_workers)
+        {
+          iouring_worker->stop = true;
+          
+          struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+          io_uring_prep_shutdown(sqe, fd, 0);
+          io_uring_submit(&iouring_worker->ring);
+        }
+        for (auto& iouring_worker : iouring_workers)
+        {
+#ifdef IO_URING_SUBMITTING_THREAD
+          iouring_worker->submitting_thread.join();
+#endif
+          iouring_worker->waiting_thread.join();
+          io_uring_queue_exit(&iouring_worker->ring);
+
+          AsyncReadWriteRequest* async_read_write_request;
+          while (iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
+          {
+            for (auto& iovec : async_read_write_request->iovecs)
+            {
+              free(iovec.iov_base);
+            }
+            delete async_read_write_request;
+          }
+        }
+        for (auto& iouring_worker : iouring_write_workers)
+        {
+          iouring_worker->stop = true;
+          
+          struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+          io_uring_prep_shutdown(sqe, fd, 0);
+          io_uring_submit(&iouring_worker->ring);
+        }
+        for (auto& iouring_worker : iouring_write_workers)
+        {
+#ifdef IO_URING_SUBMITTING_THREAD
+          iouring_worker->submitting_thread.join();
+#endif
+          iouring_worker->waiting_thread.join();
+          io_uring_queue_exit(&iouring_worker->ring);
+
+          AsyncReadWriteRequest* async_read_write_request;
+          while (iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
+          {
+            for (auto& iovec : async_read_write_request->iovecs)
+            {
+              free(iovec.iov_base);
+            }
+            delete async_read_write_request;
+          }
         }
       }
       ::close(fd);
