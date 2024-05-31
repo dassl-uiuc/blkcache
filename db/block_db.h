@@ -369,7 +369,8 @@ public:
                 AsyncReadWriteRequest* async_read_write_request;
                 while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
                 {
-                  panic("No async_read_write_request available! - Batch");
+                  info("No async_read_write_request available! - Batch");
+                  break;
                 }
 
                 async_read_write_request->key = key;
