@@ -277,7 +277,7 @@ public:
         {
           bool batch_writes = true;
           auto batch_write_current_size = 0;
-          auto batch_write_size = 256;
+          auto batch_write_size = 64;
           while (!g_stop)
           {
             AsyncRequest async_request;
