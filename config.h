@@ -15,6 +15,7 @@ struct BlockDBConfig {
   uint64_t io_uring_ring_size;
   uint64_t io_uring_worker_threads;
   uint64_t batch_write_size;
+  uint64_t async_request_threads;
 };
 
 struct DBConfig {
@@ -91,6 +92,9 @@ inline void from_json(const json &j, BlockDBConfig &block_db) {
   j.at("io_uring_worker_threads").get_to(block_db.io_uring_worker_threads);
   if (j.contains("batch_write_size")) {
     j.at("batch_write_size").get_to(block_db.batch_write_size);
+  }
+  if (j.contains("async_request_threads")) {
+    j.at("async_request_threads").get_to(block_db.async_request_threads);
   }
 }
 
