@@ -254,7 +254,7 @@ public:
               // Callback
               async_read_write_request->callback(value);
             } else {
-              async_read_write_request->callback("");
+              // async_read_write_request->callback("");
             }
 
             // Add back to queue
