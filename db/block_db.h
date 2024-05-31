@@ -88,6 +88,7 @@ public:
         }
         for (auto& async_io_submit_worker : async_io_submit_workers)
         {
+          async_io_submit_worker->stop = true;
           async_io_submit_worker->async_request_thread.join();
         }
       }
@@ -321,12 +322,12 @@ public:
         async_io_submit_worker->async_request_thread = std::thread([&, async_io_submit_worker, batch_write_size = block_cache_config.db.block_db.batch_write_size]()
         {
           auto batch_write_current_size = 0;
-          while (!g_stop)
+          while (!async_io_submit_worker->stop)
           {
             AsyncRequest async_request;
             while (!async_io_submit_worker->async_request_queue.try_dequeue(async_request))
             {
-              if (g_stop)
+              if (async_io_submit_worker->stop)
               {
                 break;
               }
@@ -379,7 +380,7 @@ public:
                 io_uring_sqe_set_data(sqe, async_read_write_request);
                 batch_write_current_size++;
 
-                if (batch_write_current_size >= batch_write_size || g_stop)
+                if (batch_write_current_size >= batch_write_size || async_io_submit_worker->stop)
                 {
                   io_uring_submit(&iouring_worker->ring);
                   batch_write_current_size = 0;
@@ -670,6 +671,7 @@ public:
 
   struct AsyncIOSubmitWorker
   {
+    bool stop = false;
     moodycamel::ConcurrentQueue<AsyncRequest> async_request_queue;
     std::thread async_request_thread;
   };
