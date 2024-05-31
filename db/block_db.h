@@ -175,7 +175,7 @@ public:
             perror("posix_memalign");
             exit(EXIT_FAILURE);
           }
-          iovec.iov_len = IO_VEC_ALLOCATION_SIZE;
+          iovec.iov_len = BLOCK_DB_SIZE;
         }
 
         iouring_worker->async_read_write_requests.enqueue(async_read_write_request);
