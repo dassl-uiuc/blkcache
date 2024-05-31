@@ -164,7 +164,7 @@ public:
 
       // Init read requests
       // for (auto i = 0; i < block_cache_config.db.block_db.io_uring_ring_size; i++)
-      for (auto i = 0; i < 1024 * 128; i++)
+      for (auto i = 0; i < 1024 * 256; i++)
       {
         auto async_read_write_request = new AsyncReadWriteRequest{};
         auto& iovecs = async_read_write_request->iovecs;
@@ -175,7 +175,7 @@ public:
             perror("posix_memalign");
             exit(EXIT_FAILURE);
           }
-          iovec.iov_len = BLOCK_DB_SIZE;
+          iovec.iov_len = IO_VEC_ALLOCATION_SIZE;
         }
 
         iouring_worker->async_read_write_requests.enqueue(async_read_write_request);
