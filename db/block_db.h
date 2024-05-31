@@ -268,7 +268,7 @@ public:
         iouring_workers.emplace_back(iouring_worker);
       }
 
-      auto NUM_ASYNC_REQUEST_THREADS = std::max(block_cache_config.db.block_db.async_request_threads, 1u);
+      auto NUM_ASYNC_REQUEST_THREADS = std::max((int)block_cache_config.db.block_db.async_request_threads, 1);
       async_io_submit_workers.reserve(NUM_ASYNC_REQUEST_THREADS);
       for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
       {
