@@ -149,10 +149,10 @@ public:
       // Init ring
       io_uring_params params{};
       // params.flags |= IORING_SETUP_IOPOLL;
-      params.flags |= IORING_SETUP_SINGLE_ISSUER;
+      // params.flags |= IORING_SETUP_SINGLE_ISSUER;
       // params.flags |= IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN;
-      // params.flags |= IORING_SETUP_SQPOLL;
-      // params.sq_thread_idle = 2000;
+      params.flags |= IORING_SETUP_SQPOLL;
+      params.sq_thread_idle = 2000;
       if (is_write)
       {
         io_uring_queue_init_params(block_cache_config.db.block_db.io_uring_write_ring_size, &iouring_worker->ring, &params);
