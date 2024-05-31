@@ -16,6 +16,10 @@ constexpr auto BLOCK_DB_SIZE = 4096u;
 
 // #define IO_URING_SUBMITTING_THREAD
 
+constexpr auto IO_VEC_ALLOCATION_SIZE = 1;
+constexpr auto IO_VEC_DEFAULT_SIZE = 1;
+constexpr auto IO_VEC_WRITE_SIZE = IO_VEC_ALLOCATION_SIZE;
+
 struct AsyncRequest
 {
   std::string key;
@@ -131,12 +135,15 @@ public:
         {
           auto async_read_write_request = new AsyncReadWriteRequest{};
           auto& iovecs = async_read_write_request->iovecs;
-          auto& iovec = iovecs.emplace_back();
-          if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
-            perror("posix_memalign");
-            exit(EXIT_FAILURE);
+          iovecs.resize(IO_VEC_ALLOCATION_SIZE);
+          for (auto& iovec : iovecs)
+          {
+            if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
+              perror("posix_memalign");
+              exit(EXIT_FAILURE);
+            }
+            iovec.iov_len = BLOCK_DB_SIZE;
           }
-          iovec.iov_len = BLOCK_DB_SIZE;
 
           iouring_worker->async_read_write_requests.enqueue(async_read_write_request);
         }
@@ -178,11 +185,11 @@ public:
 
             if (async_read_write_request->value.empty())
             {
-              io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
+              io_uring_prep_readv(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
             }
             else
             {
-              io_uring_prep_writev(sqe, fd, iovecs.data(), iovecs.size(), offset);
+              io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
             }
             io_uring_sqe_set_data(sqe, async_read_write_request);
             io_uring_submit(&iouring_worker->ring);            
@@ -267,6 +274,9 @@ public:
         auto async_io_submit_worker = std::make_shared<AsyncIOSubmitWorker>();
         async_io_submit_worker->async_request_thread = std::thread([&, async_io_submit_worker]()
         {
+          bool batch_writes = true;
+          auto batch_write_current_size = 0;
+          auto batch_write_size = 128;
           while (!g_stop)
           {
             AsyncRequest async_request;
@@ -287,7 +297,43 @@ public:
             }
             else
             {
-              this->put_async(key, value, std::move(async_callback));
+              if (batch_writes)
+              {
+                const auto &block_size = block_cache_config.db.block_db.block_size;
+
+                auto index = hash_index(key);
+                auto offset = index * block_size;
+
+                auto id = current_async_id.fetch_add(1, std::memory_order::relaxed);
+                auto& iouring_worker = iouring_workers[id % iouring_workers.size()];
+
+                std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+                struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+
+                AsyncReadWriteRequest* async_read_write_request;
+                while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
+                {
+                  panic("No async_read_write_request available!");
+                }
+
+                async_read_write_request->key = key;
+                async_read_write_request->value = value;
+                async_read_write_request->callback = std::move(async_callback);
+                auto& iovecs = async_read_write_request->iovecs;
+
+                io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_WRITE_SIZE, offset);
+                io_uring_sqe_set_data(sqe, async_read_write_request);
+                batch_write_current_size++;
+
+                if (batch_write_current_size >= batch_write_size)
+                {
+                  io_uring_submit(&iouring_worker->ring);
+                }
+              }
+              else
+              {
+                this->put_async(key, value, std::move(async_callback));
+              }
             }
           }
         });
@@ -454,7 +500,7 @@ public:
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
 
-    io_uring_prep_readv(sqe, fd, iovecs.data(), iovecs.size(), offset);
+    io_uring_prep_readv(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
     io_uring_submit(&iouring_worker->ring);
 #endif
@@ -503,7 +549,7 @@ public:
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
 
-    io_uring_prep_writev(sqe, fd, iovecs.data(), iovecs.size(), offset);
+    io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
     io_uring_submit(&iouring_worker->ring);
 #endif
