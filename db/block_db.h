@@ -86,10 +86,10 @@ public:
             delete async_read_write_request;
           }
         }
-        // for (auto& async_io_submit_worker : async_io_submit_workers)
-        // {
-        //   async_io_submit_worker->async_request_thread.join();
-        // }
+        for (auto& async_io_submit_worker : async_io_submit_workers)
+        {
+          async_io_submit_worker->async_request_thread.join();
+        }
       }
       ::close(fd);
     }
@@ -379,7 +379,7 @@ public:
                 io_uring_sqe_set_data(sqe, async_read_write_request);
                 batch_write_current_size++;
 
-                if (batch_write_current_size >= batch_write_size)
+                if (batch_write_current_size >= batch_write_size || g_stop)
                 {
                   io_uring_submit(&iouring_worker->ring);
                   batch_write_current_size = 0;
@@ -392,7 +392,6 @@ public:
             }
           }
         });
-        async_io_submit_worker->async_request_thread.detach();
 
         async_io_submit_workers.emplace_back(async_io_submit_worker);
       }
