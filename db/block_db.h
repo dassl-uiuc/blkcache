@@ -148,7 +148,7 @@ public:
       
       // Init ring
       io_uring_params params{};
-      // params.flags |= IORING_SETUP_IOPOLL;
+      params.flags |= IORING_SETUP_IOPOLL;
       // params.flags |= IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN;
       // params.flags |= IORING_SETUP_SQPOLL;
       // params.sq_thread_idle = 2000;
