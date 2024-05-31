@@ -141,7 +141,7 @@ public:
     // fsync(fd);
     free(buf);
 
-    auto make_iouring_worker = [&]()
+    auto make_iouring_worker = [&](bool is_write)
     {
       auto iouring_worker = std::make_shared<IOURingWorker>();
       
@@ -151,7 +151,14 @@ public:
       // params.flags |= IORING_SETUP_SINGLE_ISSUER | IORING_SETUP_DEFER_TASKRUN;
       // params.flags |= IORING_SETUP_SQPOLL;
       // params.sq_thread_idle = 2000;
-      io_uring_queue_init_params(block_cache_config.db.block_db.io_uring_ring_size, &iouring_worker->ring, &params);
+      if (is_write)
+      {
+        io_uring_queue_init_params(block_cache_config.db.block_db.io_uring_write_ring_size, &iouring_worker->ring, &params);
+      }
+      else
+      {
+        io_uring_queue_init_params(block_cache_config.db.block_db.io_uring_ring_size, &iouring_worker->ring, &params);
+      }
       // io_uring_register_files(&iouring_worker->ring, &fd, 1); // required for sq polling
 
       // Init read requests
@@ -295,14 +302,14 @@ public:
     {
       for (auto i = 0; i < block_cache_config.db.block_db.io_uring_worker_threads; i++)
       {
-        auto iouring_worker = make_iouring_worker();
+        auto iouring_worker = make_iouring_worker(false);
         iouring_workers.emplace_back(iouring_worker);
       }
 
       io_uring_write_worker_threads = block_cache_config.db.block_db.io_uring_write_worker_threads;
       for (auto i = 0; i < io_uring_write_worker_threads; i++)
       {
-        auto iouring_worker = make_iouring_worker();
+        auto iouring_worker = make_iouring_worker(true);
         iouring_write_workers.emplace_back(iouring_worker);
       }
 
