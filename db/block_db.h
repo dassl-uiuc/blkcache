@@ -334,6 +334,7 @@ public:
               {
                 break;
               }
+              std::this_thread::yield();
             }
             const auto& key = async_request.key;
             const auto& value = async_request.value;
@@ -365,25 +366,7 @@ public:
                   iouring_worker = iouring_workers[id % iouring_workers.size()];
                 }
 
-                AsyncReadWriteRequest* async_read_write_request;
-                while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
-                {
-                  // info("No async_read_write_request available! - Batch");
-                  async_read_write_request = new AsyncReadWriteRequest{};
-                  auto& iovecs = async_read_write_request->iovecs;
-                  iovecs.resize(IO_VEC_ALLOCATION_SIZE);
-                  for (auto& iovec : iovecs)
-                  {
-                    if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
-                      perror("posix_memalign");
-                      exit(EXIT_FAILURE);
-                    }
-                    iovec.iov_len = BLOCK_DB_SIZE;
-                  }
-
-                  break;
-                }
-
+                AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request();
                 async_read_write_request->key = key;
                 async_read_write_request->value = value;
                 async_read_write_request->callback = std::move(async_callback);
@@ -435,6 +418,29 @@ public:
     auto offset = index * block_size;
 
     return reinterpret_cast<uint8_t *>(offset);
+  }
+
+  AsyncReadWriteRequest* get_async_read_write_request()
+  {
+    AsyncReadWriteRequest* async_read_write_request;
+    while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
+    {
+      // info("No async_read_write_request available! - Batch");
+      async_read_write_request = new AsyncReadWriteRequest{};
+      auto& iovecs = async_read_write_request->iovecs;
+      iovecs.resize(IO_VEC_ALLOCATION_SIZE);
+      for (auto& iovec : iovecs)
+      {
+        if (posix_memalign(&iovec.iov_base, BLOCK_DB_SIZE, BLOCK_DB_SIZE)) {
+          perror("posix_memalign");
+          exit(EXIT_FAILURE);
+        }
+        iovec.iov_len = BLOCK_DB_SIZE;
+      }
+
+      break;
+    }
+    return async_read_write_request;
   }
 
   DBError put(const std::string &key, const std::string &value) override {
@@ -559,13 +565,9 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    AsyncReadWriteRequest* async_read_write_request;
-    while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
-    {
-      panic("No async_read_write_request available! - Get");
-    }
-
+    AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request();
     async_read_write_request->key = key;
+    async_read_write_request->value = {};
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
 
@@ -617,12 +619,7 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    AsyncReadWriteRequest* async_read_write_request;
-    while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
-    {
-      panic("No async_read_write_request available! - Put");
-    }
-
+    AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request();
     async_read_write_request->key = key;
     async_read_write_request->value = value;
     async_read_write_request->callback = std::move(callback);
