@@ -20,6 +20,24 @@ constexpr auto IO_VEC_ALLOCATION_SIZE = 1;
 constexpr auto IO_VEC_DEFAULT_SIZE = 1;
 constexpr auto IO_VEC_WRITE_SIZE = IO_VEC_ALLOCATION_SIZE;
 
+struct IOURingWorker
+{
+  struct io_uring ring;
+  bool stop = false;
+  std::thread submitting_thread;
+  std::thread waiting_thread;
+  std::mutex io_uring_lock;
+  moodycamel::ConcurrentQueue<AsyncReadWriteRequest*> async_read_write_requests;
+  moodycamel::ConcurrentQueue<AsyncReadWriteRequest> async_read_write_submit_requests;
+};
+
+struct AsyncIOSubmitWorker
+{
+  bool stop = false;
+  moodycamel::ConcurrentQueue<AsyncRequest> async_request_queue;
+  std::thread async_request_thread;
+};
+
 struct AsyncRequest
 {
   std::string key;
@@ -681,23 +699,6 @@ public:
   std::size_t size() const override { return 0; }
 
 public:
-  struct IOURingWorker
-  {
-    struct io_uring ring;
-    bool stop = false;
-    std::thread submitting_thread;
-    std::thread waiting_thread;
-    std::mutex io_uring_lock;
-    moodycamel::ConcurrentQueue<AsyncReadWriteRequest*> async_read_write_requests;
-    moodycamel::ConcurrentQueue<AsyncReadWriteRequest> async_read_write_submit_requests;
-  };
-
-  struct AsyncIOSubmitWorker
-  {
-    bool stop = false;
-    moodycamel::ConcurrentQueue<AsyncRequest> async_request_queue;
-    std::thread async_request_thread;
-  };
 
 private:
   std::mutex m;
