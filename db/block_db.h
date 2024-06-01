@@ -615,7 +615,7 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+    // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
     struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
     AsyncReadWriteRequest* async_read_write_request;
