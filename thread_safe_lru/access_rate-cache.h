@@ -76,6 +76,7 @@ class ThreadSafeLRUAccessRateCache {
     KeyValue key_value;
     ListNode* m_prev;
     ListNode* m_next;
+    bool dirty = false;
 
     bool isInList() const {
       return m_prev != OutOfListMarker;
@@ -317,6 +318,7 @@ insert(const TKey& key, const TValue& value) {
       if (orig_node->isInList()) {
         delink(orig_node);
         pushFront(orig_node);
+        orig_node->dirty = true;
       }
       lock.unlock();
     }
@@ -430,6 +432,15 @@ evict() {
     // List is empty, can't evict
     return;
   }
+
+  EvictionCallbackData<std::string, TValue> data = EvictionCallbackData<std::string, TValue>();
+  data.key = std::to_string(*moribund->key_value.key);
+  data.value = std::string(reinterpret_cast<const char*>(moribund->key_value.value.data()), moribund->key_value.value.size());
+  data.singleton = 0;
+  data.forward_count = 0;
+  data.replica_count = 0;
+  data.dirty = moribund->dirty;
+
   delink(moribund);
   lock.unlock();
 
@@ -441,8 +452,9 @@ evict() {
 
   for (const auto& callback : eviction_callbacks)
   {
-    callback({moribund->m_key.c_str(), hashAccessor->second.m_value});
+    callback(data);
   }
+
   if(rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*moribund->key_value.key) > 1) {
     callDecrementCallback();
   }

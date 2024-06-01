@@ -78,6 +78,7 @@ class ThreadSafeLRUNchanceCache {
     ListNode* m_next;
     bool isSingleton;
     int forward_count;
+    bool dirty = false;
 
     bool isInList() const {
       return m_prev != OutOfListMarker;
@@ -327,6 +328,7 @@ insert(const TKey& key, const TValue& value) {
       if (orig_node->isInList()) {
         delink(orig_node);
         pushFront(orig_node);
+        orig_node->dirty = true;
       }
       lock.unlock();
     }
@@ -559,6 +561,7 @@ evict() {
   data->singleton = nodeCopy.isSingleton;
   data->forward_count = nodeCopy.forward_count;
   data->replica_count = replicaCount;
+  data->dirty = nodeCopy.dirty;
   
   for (const auto& callback : eviction_callbacks)
   {

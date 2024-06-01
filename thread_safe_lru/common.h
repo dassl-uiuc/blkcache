@@ -8,6 +8,7 @@ struct EvictionCallbackData
     bool singleton;
     uint64_t forward_count;
     int replica_count;
+    bool dirty;
 };
 
 template<typename KeyType, typename ValueType>
