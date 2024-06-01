@@ -28,6 +28,14 @@ struct AsyncRequest
   AsyncCallback async_callback;
 };
 
+struct AsyncReadWriteRequest
+{
+  std::string key;
+  std::string value;
+  AsyncCallback callback;
+  std::vector<struct iovec> iovecs;
+};
+
 class BlockDB : public DB {
 public:
   virtual ~BlockDB() {
@@ -673,14 +681,6 @@ public:
   std::size_t size() const override { return 0; }
 
 public:
-  struct AsyncReadWriteRequest
-  {
-    std::string key;
-    std::string value;
-    AsyncCallback callback;
-    std::vector<struct iovec> iovecs;
-  };
-
   struct IOURingWorker
   {
     struct io_uring ring;
