@@ -651,14 +651,12 @@ public:
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
 
-    info("LOCK");
     std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
-    info("UNLOCK");
-    // struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
-    // io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
-    // io_uring_sqe_set_data(sqe, async_read_write_request);
-    // io_uring_submit_and_wait(&iouring_worker->ring, 0);
+    io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
+    io_uring_sqe_set_data(sqe, async_read_write_request);
+    io_uring_submit(&iouring_worker->ring);
 #endif
 
     return id;
