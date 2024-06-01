@@ -43,6 +43,7 @@ public:
         {
           iouring_worker->stop = true;
           
+          std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
           struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
           io_uring_prep_shutdown(sqe, fd, 0);
           io_uring_submit(&iouring_worker->ring);
@@ -69,6 +70,7 @@ public:
         {
           iouring_worker->stop = true;
           
+          std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
           struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
           io_uring_prep_shutdown(sqe, fd, 0);
           io_uring_submit(&iouring_worker->ring);
@@ -387,7 +389,7 @@ public:
                 async_read_write_request->callback = std::move(async_callback);
                 auto& iovecs = async_read_write_request->iovecs;
 
-                std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+                // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
                 struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
                 io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_WRITE_SIZE, offset);
@@ -626,7 +628,9 @@ public:
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
 
+    info("LOCK");
     std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+    info("UNLOCK");
     struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
     io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
