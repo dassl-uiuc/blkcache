@@ -374,7 +374,7 @@ public:
                   iouring_worker = iouring_workers[id % iouring_workers.size()];
                 }
 
-                AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request();
+                AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request(iouring_worker);
                 async_read_write_request->key = key;
                 async_read_write_request->value = value;
                 async_read_write_request->callback = std::move(async_callback);
@@ -428,7 +428,7 @@ public:
     return reinterpret_cast<uint8_t *>(offset);
   }
 
-  AsyncReadWriteRequest* get_async_read_write_request()
+  AsyncReadWriteRequest* get_async_read_write_request(std::shared_ptr<IOURingWorker> iouring_worker)
   {
     AsyncReadWriteRequest* async_read_write_request;
     while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
@@ -573,7 +573,7 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request();
+    AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request(iouring_worker);
     async_read_write_request->key = key;
     async_read_write_request->value = {};
     async_read_write_request->callback = std::move(callback);
@@ -627,7 +627,7 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request();
+    AsyncReadWriteRequest* async_read_write_request = get_async_read_write_request(iouring_worker);
     async_read_write_request->key = key;
     async_read_write_request->value = value;
     async_read_write_request->callback = std::move(callback);
