@@ -315,7 +315,7 @@ public:
         iouring_write_workers.emplace_back(iouring_worker);
       }
 
-      auto NUM_ASYNC_REQUEST_THREADS = std::max((int)block_cache_config.db.block_db.async_request_threads, 1);
+      auto NUM_ASYNC_REQUEST_THREADS = block_cache_config.db.block_db.async_request_threads;
       async_io_submit_workers.reserve(NUM_ASYNC_REQUEST_THREADS);
       for (auto i = 0; i < NUM_ASYNC_REQUEST_THREADS; i++)
       {
@@ -369,7 +369,7 @@ public:
                 AsyncReadWriteRequest* async_read_write_request;
                 while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
                 {
-                  info("No async_read_write_request available! - Batch");
+                  // info("No async_read_write_request available! - Batch");
                   async_read_write_request = new AsyncReadWriteRequest{};
                   auto& iovecs = async_read_write_request->iovecs;
                   iovecs.resize(IO_VEC_ALLOCATION_SIZE);
@@ -646,15 +646,23 @@ public:
   }
 
   AsyncID get_async_submit(const std::string &key, AsyncCallback callback) override {
-    auto is_read = true;
-    AsyncRequest async_request{key, {}, is_read, callback};
-    return async_submit(async_request);
+    if (block_cache_config.db.block_db.async_request_threads > 0)
+    {
+      auto is_read = true;
+      AsyncRequest async_request{key, {}, is_read, callback};
+      return async_submit(async_request);
+    }
+    return get_async(key, callback);
   }
 
   AsyncID put_async_submit(const std::string &key, const std::string &value, AsyncCallback callback) override {
-    auto is_read = false;
-    AsyncRequest async_request{key, value, is_read, callback};
-    return async_submit(async_request);
+    if (block_cache_config.db.block_db.async_request_threads > 0)
+    {
+      auto is_read = false;
+      AsyncRequest async_request{key, value, is_read, callback};
+      return async_submit(async_request);
+    }
+    return put_async(key, value, callback);
   }
 
   DBError remove(const std::string &key) override {
