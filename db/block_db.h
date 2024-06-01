@@ -635,7 +635,7 @@ public:
 
     io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
-    io_uring_submit(&iouring_worker->ring);
+    io_uring_submit_and_wait(&iouring_worker->ring);
 #endif
 
     return id;
