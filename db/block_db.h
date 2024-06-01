@@ -363,9 +363,6 @@ public:
                   iouring_worker = iouring_workers[id % iouring_workers.size()];
                 }
 
-                std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
-                struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
-
                 AsyncReadWriteRequest* async_read_write_request;
                 while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
                 {
@@ -389,6 +386,9 @@ public:
                 async_read_write_request->value = value;
                 async_read_write_request->callback = std::move(async_callback);
                 auto& iovecs = async_read_write_request->iovecs;
+
+                std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+                struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
                 io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_WRITE_SIZE, offset);
                 io_uring_sqe_set_data(sqe, async_read_write_request);
@@ -557,9 +557,6 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
-
     AsyncReadWriteRequest* async_read_write_request;
     while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
     {
@@ -569,6 +566,9 @@ public:
     async_read_write_request->key = key;
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
+
+    std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
     io_uring_prep_readv(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
@@ -615,9 +615,6 @@ public:
     iouring_worker->async_read_write_submit_requests.enqueue(std::move(async_read_write_request));    
 #else
 
-    // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
-    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
-
     AsyncReadWriteRequest* async_read_write_request;
     while (!iouring_worker->async_read_write_requests.try_dequeue(async_read_write_request))
     {
@@ -628,6 +625,9 @@ public:
     async_read_write_request->value = value;
     async_read_write_request->callback = std::move(callback);
     auto& iovecs = async_read_write_request->iovecs;
+
+    std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
+    struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
 
     io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
