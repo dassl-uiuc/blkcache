@@ -20,6 +20,22 @@ constexpr auto IO_VEC_ALLOCATION_SIZE = 1;
 constexpr auto IO_VEC_DEFAULT_SIZE = 1;
 constexpr auto IO_VEC_WRITE_SIZE = IO_VEC_ALLOCATION_SIZE;
 
+struct AsyncRequest
+{
+  std::string key;
+  std::string value;
+  bool is_read;
+  AsyncCallback async_callback;
+};
+
+struct AsyncReadWriteRequest
+{
+  std::string key;
+  std::string value;
+  AsyncCallback callback;
+  std::vector<struct iovec> iovecs;
+};
+
 struct IOURingWorker
 {
   struct io_uring ring;
@@ -36,22 +52,6 @@ struct AsyncIOSubmitWorker
   bool stop = false;
   moodycamel::ConcurrentQueue<AsyncRequest> async_request_queue;
   std::thread async_request_thread;
-};
-
-struct AsyncRequest
-{
-  std::string key;
-  std::string value;
-  bool is_read;
-  AsyncCallback async_callback;
-};
-
-struct AsyncReadWriteRequest
-{
-  std::string key;
-  std::string value;
-  AsyncCallback callback;
-  std::vector<struct iovec> iovecs;
 };
 
 class BlockDB : public DB {
