@@ -409,7 +409,6 @@ public:
                 if (batch_write_current_size >= batch_write_size || async_io_submit_worker->stop)
                 {
                   io_uring_submit(&iouring_worker->ring);
-                  submitted_async_write_id.fetch_add(1, std::memory_order::relaxed);
                   batch_write_current_size = 0;
                 }
               }
@@ -661,7 +660,6 @@ public:
     io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
     io_uring_submit(&iouring_worker->ring);
-    submitted_async_write_id.fetch_add(1, std::memory_order::relaxed);
 #endif
 
     return id;
@@ -688,6 +686,7 @@ public:
           break;
         }
       }
+      submitted_async_write_id.fetch_add(1, std::memory_order::relaxed);
     }
   }
 
