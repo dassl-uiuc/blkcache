@@ -389,7 +389,6 @@ public:
                 }
                 else
                 {
-                  auto last_async_write_id = current_async_write_id.fetch_add(1, std::memory_order::relaxed);
                   id = current_async_id.fetch_add(1, std::memory_order::relaxed);
                   iouring_worker = iouring_workers[id % iouring_workers.size()];
                 }
@@ -410,6 +409,7 @@ public:
                 if (batch_write_current_size >= batch_write_size || async_io_submit_worker->stop)
                 {
                   io_uring_submit(&iouring_worker->ring);
+                  submitted_async_write_id.fetch_add(1, std::memory_order::relaxed);
                   batch_write_current_size = 0;
                 }
               }
@@ -632,7 +632,6 @@ public:
     }
     else
     {
-      current_async_write_id.fetch_add(1, std::memory_order::relaxed);
       id = current_async_id.fetch_add(1, std::memory_order::relaxed);
       iouring_worker = iouring_workers[id % iouring_workers.size()];
     }
@@ -675,7 +674,7 @@ public:
     {
       while (true)
       {
-        uint64_t submit_write_id = current_async_write_id.load(std::memory_order::relaxed);
+        uint64_t submit_write_id = submitted_async_write_id.load(std::memory_order::relaxed);
         uint64_t waited_write_id = waited_async_write_id.load(std::memory_order::relaxed);
 
         if (batch_write_size > 0)
@@ -753,6 +752,7 @@ private:
   std::atomic<uint64_t> current_async_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_workers;
   std::atomic<uint64_t> current_async_write_id{};
+  std::atomic<uint64_t> submitted_async_write_id{};
   std::atomic<uint64_t> waited_async_write_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_write_workers;
   std::atomic<uint64_t> current_async_submit_id{};
