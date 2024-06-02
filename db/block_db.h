@@ -316,6 +316,7 @@ public:
             // Callback
             async_read_write_request->callback(value);
           } else {
+            waited_async_write_id.fetch_add(1, std::memory_order::relaxed);
             // async_read_write_request->callback("");
           }
 
@@ -388,6 +389,7 @@ public:
                 }
                 else
                 {
+                  auto last_async_write_id = current_async_write_id.fetch_add(1, std::memory_order::relaxed);
                   id = current_async_id.fetch_add(1, std::memory_order::relaxed);
                   iouring_worker = iouring_workers[id % iouring_workers.size()];
                 }
@@ -614,6 +616,8 @@ public:
       panic("Async not enabled");
     }
 
+    block_on_pending_write();
+
     const auto &block_size = block_cache_config.db.block_db.block_size;
 
     auto index = hash_index(key);
@@ -628,6 +632,7 @@ public:
     }
     else
     {
+      current_async_write_id.fetch_add(1, std::memory_order::relaxed);
       id = current_async_id.fetch_add(1, std::memory_order::relaxed);
       iouring_worker = iouring_workers[id % iouring_workers.size()];
     }
@@ -662,6 +667,28 @@ public:
     return id;
   }
 
+  void block_on_pending_write()
+  {
+    static const auto batch_max_pending_requests = block_cache_config.db.block_db.batch_max_pending_requests;
+    if (batch_max_pending_requests > 0)
+    {
+      while (true)
+      {
+        uint64_t submit_write_id = current_async_write_id.load(std::memory_order::relaxed);
+        uint64_t waited_write_id = waited_async_write_id.load(std::memory_order::relaxed);
+
+        if (waited_write_id - submit_write_id > batch_max_pending_requests)
+        {
+          std::this_thread::yield();
+        }
+        else
+        {
+          break;
+        }
+      }
+    }
+  }
+
   AsyncID async_submit(AsyncRequest async_request) {
     auto id = current_async_submit_id.fetch_add(1, std::memory_order::relaxed);
     auto& async_io_submit_worker = async_io_submit_workers[id % async_io_submit_workers.size()];
@@ -683,6 +710,8 @@ public:
   AsyncID put_async_submit(const std::string &key, const std::string &value, AsyncCallback callback) override {
     if (block_cache_config.db.block_db.async_request_threads > 0)
     {
+      block_on_pending_write();
+
       auto is_read = false;
       AsyncRequest async_request{key, value, is_read, callback};
       return async_submit(async_request);
@@ -709,6 +738,7 @@ private:
   std::atomic<uint64_t> current_async_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_workers;
   std::atomic<uint64_t> current_async_write_id{};
+  std::atomic<uint64_t> waited_async_write_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_write_workers;
   std::atomic<uint64_t> current_async_submit_id{};
   std::vector<std::shared_ptr<AsyncIOSubmitWorker>> async_io_submit_workers;

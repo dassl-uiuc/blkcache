@@ -17,6 +17,8 @@ struct BlockDBConfig {
   uint64_t io_uring_write_ring_size;
   uint64_t io_uring_write_worker_threads;
   uint64_t batch_write_size;
+  uint64_t batch_max_pending_requests;
+  uint64_t milliseconds_flush_dirty_cache;
   uint64_t async_request_threads;
 };
 
@@ -104,6 +106,12 @@ inline void from_json(const json &j, BlockDBConfig &block_db) {
   }
   if (j.contains("batch_write_size")) {
     j.at("batch_write_size").get_to(block_db.batch_write_size);
+  }
+  if (j.contains("batch_max_pending_requests")) {
+    j.at("batch_max_pending_requests").get_to(block_db.batch_max_pending_requests);
+  }
+  if (j.contains("milliseconds_flush_dirty_cache")) {
+    j.at("milliseconds_flush_dirty_cache").get_to(block_db.milliseconds_flush_dirty_cache);
   }
   if (j.contains("async_request_threads")) {
     j.at("async_request_threads").get_to(block_db.async_request_threads);
