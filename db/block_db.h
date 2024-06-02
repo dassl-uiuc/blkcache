@@ -678,9 +678,9 @@ public:
         uint64_t submit_write_id = submitted_async_write_id.load(std::memory_order::relaxed);
         uint64_t waited_write_id = waited_async_write_id.load(std::memory_order::relaxed);
 
+        info("HEEE  {} {} {}", submit_write_id, waited_write_id, submit_write_id - waited_write_id);
         if (submit_write_id - waited_write_id > batch_max_pending_requests)
         {
-          info("HEEE  {} {} {}", submit_write_id, waited_write_id, submit_write_id - waited_write_id);
           std::this_thread::yield();
         }
         else
