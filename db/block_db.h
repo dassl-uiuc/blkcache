@@ -677,27 +677,13 @@ public:
         uint64_t submit_write_id = submitted_async_write_id.load(std::memory_order::relaxed);
         uint64_t waited_write_id = waited_async_write_id.load(std::memory_order::relaxed);
 
-        if (batch_write_size > 0)
+        if (waited_write_id - submit_write_id > batch_max_pending_requests)
         {
-          if (waited_write_id - submit_write_id > batch_max_pending_requests * batch_write_size)
-          {
-            std::this_thread::yield();
-          }
-          else
-          {
-            break;
-          }
+          std::this_thread::yield();
         }
         else
         {
-          if (waited_write_id - submit_write_id > batch_max_pending_requests)
-          {
-            std::this_thread::yield();
-          }
-          else
-          {
-            break;
-          }
+          break;
         }
       }
     }
