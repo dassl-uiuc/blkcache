@@ -670,6 +670,7 @@ public:
   void block_on_pending_write()
   {
     static const auto batch_max_pending_requests = block_cache_config.db.block_db.batch_max_pending_requests;
+    static const auto batch_write_size = block_cache_config.db.block_db.batch_write_size;
     if (batch_max_pending_requests > 0)
     {
       while (true)
@@ -677,13 +678,27 @@ public:
         uint64_t submit_write_id = current_async_write_id.load(std::memory_order::relaxed);
         uint64_t waited_write_id = waited_async_write_id.load(std::memory_order::relaxed);
 
-        if (waited_write_id - submit_write_id > batch_max_pending_requests)
+        if (batch_write_size > 0)
         {
-          std::this_thread::yield();
+          if (waited_write_id - submit_write_id > batch_max_pending_requests * batch_write_size)
+          {
+            std::this_thread::yield();
+          }
+          else
+          {
+            break;
+          }
         }
         else
         {
-          break;
+          if (waited_write_id - submit_write_id > batch_max_pending_requests)
+          {
+            std::this_thread::yield();
+          }
+          else
+          {
+            break;
+          }
         }
       }
     }
