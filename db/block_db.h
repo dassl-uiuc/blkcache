@@ -661,6 +661,7 @@ public:
     io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
     io_uring_sqe_set_data(sqe, async_read_write_request);
     io_uring_submit(&iouring_worker->ring);
+    submitted_async_write_id.fetch_add(1, std::memory_order::relaxed);
 #endif
 
     return id;
