@@ -683,7 +683,7 @@ public:
           submit_write_id *= batch_write_size;
         }
         info("HEEE  {} {} {} {}", submit_write_id, batch_write_size, waited_write_id, submit_write_id - waited_write_id);
-        if (submit_write_id > waited_write_id && submit_write_id - waited_write_id > batch_max_pending_requests)
+        if (submit_write_id < waited_write_id || submit_write_id - waited_write_id > batch_max_pending_requests)
         {
           std::this_thread::yield();
         }
