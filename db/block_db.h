@@ -317,6 +317,7 @@ public:
 
             // Callback
             async_read_write_request->callback(value);
+          }
           if (value_written) {
             waited_async_write_id.fetch_add(1, std::memory_order::relaxed);
             // async_read_write_request->callback("");
