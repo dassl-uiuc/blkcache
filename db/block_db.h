@@ -695,7 +695,6 @@ public:
         if (batch_write_size > 0)
         {
           submit_write_id *= batch_write_size;
-          submit_write_id += batch_write_size;
         }
         info("HEEE  {} {} {} {}", submit_write_id, batch_write_size, waited_write_id, submit_write_id - waited_write_id);
         if (submit_write_id < waited_write_id || submit_write_id - waited_write_id > batch_max_pending_requests)
