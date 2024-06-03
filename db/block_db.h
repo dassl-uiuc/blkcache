@@ -678,7 +678,7 @@ public:
         uint64_t submit_write_id = submitted_async_write_id.load(std::memory_order::relaxed);
         uint64_t waited_write_id = waited_async_write_id.load(std::memory_order::relaxed);
 
-        info("HEEE  {} {} {} {}", submit_write_id, submit_write_id * batch_write_size waited_write_id, submit_write_id - waited_write_id);
+        info("HEEE  {} {} {} {}", submit_write_id, submit_write_id * batch_write_siz, waited_write_id, submit_write_id - waited_write_id);
         if (batch_write_size > 0)
         {
           submit_write_id *= batch_write_size;
