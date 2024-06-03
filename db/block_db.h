@@ -34,6 +34,7 @@ struct AsyncReadWriteRequest
   std::string value;
   AsyncCallback callback;
   std::vector<struct iovec> iovecs;
+  bool value_written = false;
 };
 
 struct IOURingWorker
@@ -279,6 +280,7 @@ public:
           }
           const auto& key = async_read_write_request->key;
           const auto& value = async_read_write_request->value;
+          const auto& value_written = async_read_write_request->value_written;
 
           if (value.empty())
           {
@@ -315,7 +317,7 @@ public:
 
             // Callback
             async_read_write_request->callback(value);
-          } else {
+          if (value_written) {
             waited_async_write_id.fetch_add(1, std::memory_order::relaxed);
             // async_read_write_request->callback("");
           }
@@ -397,6 +399,7 @@ public:
                 async_read_write_request->key = key;
                 async_read_write_request->value = value;
                 async_read_write_request->callback = std::move(async_callback);
+                async_read_write_request->value_written = true;
                 auto& iovecs = async_read_write_request->iovecs;
 
                 // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
@@ -470,6 +473,7 @@ public:
     }
     async_read_write_request->key = std::string{};
     async_read_write_request->value = std::string{};
+    async_read_write_request->value_written = false;
     return async_read_write_request;
   }
 
@@ -655,6 +659,7 @@ public:
     async_read_write_request->key = key;
     async_read_write_request->value = value;
     async_read_write_request->callback = std::move(callback);
+    async_read_write_request->value_written = true;
     auto& iovecs = async_read_write_request->iovecs;
 
     std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
