@@ -34,7 +34,7 @@ struct AsyncReadWriteRequest
   std::string value;
   AsyncCallback callback;
   std::vector<struct iovec> iovecs;
-  bool value_written = false;
+  uint64_t written_id;
 };
 
 struct IOURingWorker
@@ -123,6 +123,15 @@ public:
       }
       ::close(fd);
     }
+  }
+  
+  template<typename T>
+  inline void update_max(std::atomic<T> & atom, const T val)
+  {
+    for(T atom_val=atom;
+        atom_val < val &&
+        !atom.compare_exchange_weak(atom_val, val, std::memory_order_relaxed);
+      );
   }
 
   void init(BlockCacheConfig block_cache_config) override {
@@ -280,7 +289,7 @@ public:
           }
           const auto& key = async_read_write_request->key;
           const auto& value = async_read_write_request->value;
-          const auto& value_written = async_read_write_request->value_written;
+          const auto& written_id = async_read_write_request->written_id;
 
           if (value.empty())
           {
@@ -318,10 +327,7 @@ public:
             // Callback
             async_read_write_request->callback(value);
           }
-          if (value_written) {
-            waited_async_write_id.fetch_add(1, std::memory_order::relaxed);
-            // async_read_write_request->callback("");
-          }
+          update_max(waited_async_write_id, written_id);
 
           // Add back to queue
           iouring_worker->async_read_write_requests.enqueue(async_read_write_request);
@@ -400,7 +406,7 @@ public:
                 async_read_write_request->key = key;
                 async_read_write_request->value = value;
                 async_read_write_request->callback = std::move(async_callback);
-                async_read_write_request->value_written = true;
+                async_read_write_request->written_id = id;
                 auto& iovecs = async_read_write_request->iovecs;
 
                 // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
@@ -474,7 +480,7 @@ public:
     }
     async_read_write_request->key = std::string{};
     async_read_write_request->value = std::string{};
-    async_read_write_request->value_written = false;
+    async_read_write_request->written_id = 0;
     return async_read_write_request;
   }
 
@@ -660,7 +666,7 @@ public:
     async_read_write_request->key = key;
     async_read_write_request->value = value;
     async_read_write_request->callback = std::move(callback);
-    async_read_write_request->value_written = true;
+    async_read_write_request->written_id = id;
     auto& iovecs = async_read_write_request->iovecs;
 
     std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
