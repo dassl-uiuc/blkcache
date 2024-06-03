@@ -212,7 +212,7 @@ public:
   virtual bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) { panic("Unsupported"); }
   
-  virtual std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {panic("Unsupported"); }
+  virtual std::vector<std::pair<KeyType, uint64_t>> &get_key_freq_map() {panic("Unsupported"); }
   virtual std::pair<uint64_t, uint64_t> get_access_rate_and_access_per_itr() {panic("Unsupported");}
   virtual bool set_access_rate(uint64_t access_rate_) {panic("Unsupported");}
   virtual void set_perf_stats(uint64_t local_size_, uint64_t remote_size_, uint64_t performance_) {panic("Unsupported");}

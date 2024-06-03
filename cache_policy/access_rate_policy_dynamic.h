@@ -57,7 +57,7 @@ public:
   void put(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     String skey(key.c_str(), key.length());
-    secm->insert(skey, val);
+    secm->insert(skey, val, owning);
     for (const auto& callback : this->write_callbacks) {
       callback(key, val);
     }
@@ -139,6 +139,11 @@ public:
     for (auto &skey : skeys) {
       os << skey.data() << "\n";
     }
+  }
+
+  void add_callback_on_eviction(EvictionCallback<KeyType, ValueType> callback) override {
+    this->eviction_callbacks.emplace_back(callback);
+    secm->add_callback_on_eviction(callback);
   }
 
   RDMAKeyValueStorage* get_rdma_key_value_storage() override { return rdma_key_value_storage.get(); }
@@ -241,7 +246,7 @@ public:
     }
   }
 
-  std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {
+  std::vector<std::pair<KeyType, uint64_t>> &get_key_freq_map() {
     return shadow_freq;
   }
   
@@ -354,17 +359,18 @@ public:
   }
 
   void print_all_stats(){
-    print_shadow_freq_to_a_file();
-    print_key_freq_to_a_file();
-    print_keys_from_past_to_a_file();
-    print_cache_stats();
+    // print_shadow_freq_to_a_file();
+    // print_key_freq_to_a_file();
+    // print_keys_from_past_to_a_file();
+    // print_cache_stats();
     print_access_rate();
   }
 
   bool is_ready(){
-    if(total_accesses.load() > 400000){
+    if(total_accesses.load() > 10000000){
       return true;
     }
+    return false;
   }
   
 

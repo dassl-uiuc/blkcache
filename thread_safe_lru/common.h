@@ -4,6 +4,7 @@ template<typename KeyType, typename ValueType>
 struct EvictionCallbackData
 {
     KeyType key;
+    uint64_t keyi;
     ValueType value;
     bool singleton;
     uint64_t forward_count;
@@ -12,4 +13,4 @@ struct EvictionCallbackData
 };
 
 template<typename KeyType, typename ValueType>
-using EvictionCallback = std::function<void(EvictionCallbackData<KeyType, ValueType>)>;
+using EvictionCallback = std::function<void(const EvictionCallbackData<KeyType, ValueType>&)>;

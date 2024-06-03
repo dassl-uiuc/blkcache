@@ -169,7 +169,7 @@ public:
    * will not be updated, and false will be returned. Otherwise, true will be
    * returned.
    */
-  void* insert(const TKey& key, const TValue& value);
+  void* insert(const TKey& key, const TValue& value, bool dirty);
 
   bool insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int forward_count);
 
@@ -300,13 +300,14 @@ find(ConstAccessor& ac, const TKey& key) {
 
 template <class TKey, class TValue, class THash>
 void* ThreadSafeLRUNchanceCache<TKey, TValue, THash>::
-insert(const TKey& key, const TValue& value) {
+insert(const TKey& key, const TValue& value, bool dirty) {
   // Insert into the CHM
   ListNode* node = nullptr;
   ListNode* tmp = nullptr;
   void* evict_node = nullptr;
 
   node = new ListNode(key);
+  node->dirty = dirty;
   HashMapAccessor hashAccessor;
   HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
@@ -328,7 +329,6 @@ insert(const TKey& key, const TValue& value) {
       if (orig_node->isInList()) {
         delink(orig_node);
         pushFront(orig_node);
-        orig_node->dirty = true;
       }
       lock.unlock();
     }
@@ -344,7 +344,7 @@ insert(const TKey& key, const TValue& value) {
 
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
-    KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
+    KeyValue key_value = rdma_key_value_storage->allocate(convert_string<uint64_t>(key.c_str()));
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
     node->isSingleton = false;
@@ -421,7 +421,7 @@ insert_singleton(const TKey& key, const TValue& value, bool isSingleton, int for
 
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
-    auto key_index = std::stoi(key.c_str());
+    auto key_index = convert_string<uint64_t>(key.c_str());
     KeyValue key_value = rdma_key_value_storage->allocate(key_index);
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
@@ -619,7 +619,7 @@ evict_for_singleton() {
 
   for (const auto& callback : eviction_callbacks)
   {
-    callback({nodeToRemove->m_key.c_str(), hashAccessor->second.m_value});
+    // callback({nodeToRemove->m_key.c_str(), hashAccessor->second.m_value});
   }
 
   m_map.erase(hashAccessor);

@@ -194,7 +194,7 @@ public:
 
   bool exists_in_cache(const K &k) { return cache->exist(k); }
 
-  V get(const K &k, bool owning = true, bool exists_in_cache = false) {
+  V get(const K &k, bool owning = false, bool exists_in_cache = false) {
     reads += 1;
     if (exists_in_cache || cache->exist(k)) {
       cache_hit++;

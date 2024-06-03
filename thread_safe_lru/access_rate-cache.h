@@ -179,7 +179,7 @@ public:
    * will not be updated, and false will be returned. Otherwise, true will be
    * returned.
    */
-  bool insert(const TKey& key, const TValue& value);
+  bool insert(const TKey& key, const TValue& value, bool dirty);
 
   /**
    * Clear the container. NOT THREAD SAFE -- do not use while other threads
@@ -257,6 +257,7 @@ private:
   BlockCacheConfig block_cache_config;
   std::shared_ptr<RDMAKeyValueStorage> rdma_key_value_storage;
   std::vector<EvictionCallback<std::string, TValue>> eviction_callbacks;
+  std::thread background_dirty_worker;
 };
 
 template <class TKey, class TValue, class THash>
@@ -272,6 +273,45 @@ ThreadSafeLRUAccessRateCache(size_t maxSize, BlockCacheConfig block_cache_config
   m_head.m_prev = nullptr;
   m_head.m_next = &m_tail;
   m_tail.m_prev = &m_head;
+
+  background_dirty_worker = std::thread([&]()
+  {
+    if (block_cache_config.db.block_db.milliseconds_flush_dirty_cache > 0)
+    {
+      while (true)
+      {
+        {
+          // std::lock_guard<ListMutex> lock(m_listMutex);
+          EvictionCallbackData<std::string, TValue> data = EvictionCallbackData<std::string, TValue>();
+          for (ListNode* node = m_head.m_next; node != &m_tail; node = node->m_next)
+          {
+            if (node == nullptr)
+            {
+              continue;
+            }
+            if (node->dirty)
+            {
+              // data.key = std::to_string(*node->key_value.key);
+              data.keyi = *node->key_value.key;
+              data.value = std::string(reinterpret_cast<const char*>(node->key_value.value.data()), node->key_value.value.size());
+              data.singleton = 0;
+              data.forward_count = 0;
+              data.replica_count = 0;
+              data.dirty = node->dirty;
+
+              for (const auto& callback : eviction_callbacks)
+              {
+                callback(data);
+              }
+              node->dirty = false;
+            }
+          }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(block_cache_config.db.block_db.milliseconds_flush_dirty_cache));
+      }
+    }
+  });
+  background_dirty_worker.detach();
 }
 
 template <class TKey, class TValue, class THash>
@@ -300,10 +340,12 @@ find(ConstAccessor& ac, const TKey& key) {
 
 template <class TKey, class TValue, class THash>
 bool ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
-insert(const TKey& key, const TValue& value) {
+insert(const TKey& key, const TValue& value, bool dirty) {
   // Insert into the CHM
   ListNode* node = nullptr;
   node = new ListNode(key);
+  node->dirty = dirty;
+
   HashMapAccessor hashAccessor;
   HashMapValuePair hashMapValue(key, HashMapValue(value, node));
   if (!m_map.insert(hashAccessor, hashMapValue)) {
@@ -318,7 +360,35 @@ insert(const TKey& key, const TValue& value) {
       if (orig_node->isInList()) {
         delink(orig_node);
         pushFront(orig_node);
-        orig_node->dirty = true;
+        // if (orig_node->dirty)
+        // {
+        //   EvictionCallbackData<std::string, TValue> data = EvictionCallbackData<std::string, TValue>();
+        //   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+        //   {
+        //     // data.key = std::to_string(*moribund->key_value.key);
+        //     data.keyi = *orig_node->key_value.key;
+        //     data.value = std::string(reinterpret_cast<const char*>(orig_node->key_value.value.data()), orig_node->key_value.value.size());
+        //   }
+        //   else
+        //   {
+        //     data.key = orig_node->m_key.c_str();
+        //   }
+        //   data.singleton = 0;
+        //   data.forward_count = 0;
+        //   data.replica_count = 0;
+        //   data.dirty = orig_node->dirty;
+
+        //   if (!block_cache_config.baseline.one_sided_rdma_enabled)
+        //   {
+        //     data.value = hashAccessor->second.m_value;
+        //   }
+
+        //   for (const auto& callback : eviction_callbacks)
+        //   {
+        //     callback(data);
+        //   }
+        // }
+        // orig_node->dirty = dirty;
       }
       lock.unlock();
     }
@@ -330,7 +400,7 @@ insert(const TKey& key, const TValue& value) {
 
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
-    KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
+    KeyValue key_value = rdma_key_value_storage->allocate(convert_string<uint64_t>(key.c_str()));
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
   }
@@ -428,14 +498,23 @@ void ThreadSafeLRUAccessRateCache<TKey, TValue, THash>::
 evict() {
   std::unique_lock<ListMutex> lock(m_listMutex);
   ListNode* moribund = m_tail.m_prev;
+
   if (moribund == &m_head) {
     // List is empty, can't evict
     return;
   }
 
   EvictionCallbackData<std::string, TValue> data = EvictionCallbackData<std::string, TValue>();
-  data.key = std::to_string(*moribund->key_value.key);
-  data.value = std::string(reinterpret_cast<const char*>(moribund->key_value.value.data()), moribund->key_value.value.size());
+  if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+  {
+    // data.key = std::to_string(*moribund->key_value.key);
+    data.keyi = *moribund->key_value.key;
+    data.value = std::string(reinterpret_cast<const char*>(moribund->key_value.value.data()), moribund->key_value.value.size());
+  }
+  else
+  {
+    data.key = moribund->m_key.c_str();
+  }
   data.singleton = 0;
   data.forward_count = 0;
   data.replica_count = 0;
@@ -448,6 +527,11 @@ evict() {
   if (!m_map.find(hashAccessor, moribund->m_key)) {
     // Presumably unreachable
     return;
+  }
+
+  if (!block_cache_config.baseline.one_sided_rdma_enabled)
+  {
+    data.value = hashAccessor->second.m_value;
   }
 
   for (const auto& callback : eviction_callbacks)

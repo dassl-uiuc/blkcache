@@ -35,7 +35,7 @@ public:
   void put(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     String skey(key.c_str(), key.length());
-    secm->insert(skey, val);
+    secm->insert(skey, val, owning);
     for (const auto& callback : this->write_callbacks) {
       callback(key, val);
     }
@@ -44,7 +44,7 @@ public:
   void* put_nchance(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     String skey(key.c_str(), key.length());
-    auto data = secm->insert(skey, val);
+    auto data = secm->insert(skey, val, owning);
     for (const auto& callback : this->write_callbacks) {
       callback(key, val);
     }
