@@ -468,6 +468,8 @@ public:
 
       break;
     }
+    async_read_write_request->key = std::string{};
+    async_read_write_request->value = std::string{};
     return async_read_write_request;
   }
 
