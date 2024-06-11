@@ -173,7 +173,7 @@ public:
     }
   }
 
-  std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {
+  std::vector<std::pair<KeyType, uint64_t>> &get_key_freq_map() {
     return shadow_freq;
   }
   

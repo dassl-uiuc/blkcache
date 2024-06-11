@@ -241,7 +241,7 @@ public:
     }
   }
 
-  std::vector<std::pair<KeyType, uint64_t>> get_key_freq_map() {
+  std::vector<std::pair<KeyType, uint64_t>> &get_key_freq_map() {
     return shadow_freq;
   }
   
@@ -362,7 +362,7 @@ public:
   }
 
   bool is_ready(){
-    if(total_accesses.load() > 12000000){
+    if(total_accesses.load() > 10000000){
       return true;
     }
     return false;
