@@ -10,7 +10,10 @@
 #include <list>
 #include <unordered_map>
 #include <liburing.h>
+#include <filesystem>
 #undef BLOCK_SIZE
+
+namespace fs = std::filesystem;
 
 constexpr auto BLOCK_DB_SIZE = 4096u;
 
@@ -138,8 +141,16 @@ public:
   void init(BlockCacheConfig block_cache_config) override {
     DB::init(block_cache_config);
 
-    fd = open(block_cache_config.db.block_db.filename.c_str(),
-              O_CREAT | O_RDWR | O_TRUNC | O_DIRECT, S_IRWXU);
+    auto open_flags = O_CREAT | O_RDWR | O_TRUNC | O_DIRECT;
+    if (!block_cache_config.db.block_db.copied_filename.empty())
+    {
+      fs::remove(block_cache_config.db.block_db.filename);
+      fs::copy(block_cache_config.db.block_db.copied_filename, block_cache_config.db.block_db.filename, fs::copy_options::overwrite_existing | fs::copy_options::create_hard_links);
+      // block_cache_config.db.block_db.filename = block_cache_config.db.block_db.copied_filename;
+      open_flags = O_RDWR | O_DIRECT;
+    }
+
+    fd = open(block_cache_config.db.block_db.filename.c_str(), open_flags, S_IRWXU);
     if (fd == -1) {
       perror("open");
       exit(EXIT_FAILURE);
@@ -160,7 +171,9 @@ public:
       perror("posix_memalign");
       exit(EXIT_FAILURE);
     }
+    lseek(fd, 0, SEEK_END);
     lseek(fd, 0, SEEK_SET);
+    batch_max_pending_requests = block_cache_config.db.block_db.batch_max_pending_requests;
 
     // lseek(fd, storage_size, SEEK_SET);
     // write(fd, buf, 1);
@@ -265,7 +278,7 @@ public:
             io_uring_prep_writev(sqe, fd, iovecs.data(), IO_VEC_DEFAULT_SIZE, offset);
           }
           io_uring_sqe_set_data(sqe, async_read_write_request);
-          io_uring_submit(&iouring_worker->ring);            
+          io_uring_submit(&iouring_worker->ring);
         }
       });
 #endif
@@ -524,11 +537,11 @@ public:
       return DBError::WriteOutOfBounds;
     }
 
-    // pwrite(fd, buf, BLOCK_DB_SIZE, offset);
-    lseek(fd, offset, SEEK_SET);
-    if (write(fd, buf, block_size) == -1) {
-      return DBError::WriteFailed;
-    }
+    pwrite(fd, buf, BLOCK_DB_SIZE, offset);
+    // lseek(fd, offset, SEEK_SET);
+    // if (write(fd, buf, block_size) == -1) {
+    //   return DBError::WriteFailed;
+    // }
     // fsync(fd);
 
     return DBError::None;
@@ -689,7 +702,6 @@ public:
 
   void block_on_pending_write()
   {
-    static const auto batch_max_pending_requests = block_cache_config.db.block_db.batch_max_pending_requests;
     static const auto batch_write_size = block_cache_config.db.block_db.batch_write_size;
     if (batch_max_pending_requests > 0)
     {
@@ -759,6 +771,11 @@ public:
 
   std::size_t size() const override { return 0; }
 
+  void set_batch_max_pending_requests(std::size_t v) override
+  {
+    batch_max_pending_requests = v;
+  }
+
 public:
 
 private:
@@ -768,6 +785,8 @@ private:
   size_t num_entries = 0;
   size_t storage_size = 0;
   size_t cursor = 0;
+
+  std::size_t batch_max_pending_requests;
 
   std::atomic<uint64_t> current_async_id{};
   std::vector<std::shared_ptr<IOURingWorker>> iouring_workers;

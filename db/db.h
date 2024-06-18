@@ -37,6 +37,7 @@ public:
   virtual AsyncID put_async_submit(const std::string &key, const std::string &value, AsyncCallback callback) = 0;
   virtual DBError remove(const std::string &key) = 0;
   virtual std::size_t size() const = 0;
+  virtual void set_batch_max_pending_requests(std::size_t v) = 0;
 
 protected:
   BlockCacheConfig block_cache_config;

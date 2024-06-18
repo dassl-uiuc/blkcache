@@ -195,6 +195,23 @@ public:
   void add_callback_on_eviction(EvictionCallback<std::string, TValue> callback) { eviction_callbacks.emplace_back(callback); }
 
 private:
+  void check_if_hash_dirty(auto& d)
+  {
+    if (d)
+    {
+      return;
+    }
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+    auto h = ((((23 << 2) + 11) * 5) - 320);
+    auto c = (float)h / 1000.0;
+    auto r = dis(gen) < c;
+    hh += r;
+    d = r;
+  }
+
+  float hh;
   /**
    * Unlink a node from the list. The caller must lock the list mutex while
    * this is called.
@@ -300,15 +317,45 @@ insert(const TKey& key, const TValue& value, bool dirty) {
     //   rdma_key_value_storage->deallocate(node->key_value);
     // }
 
+    ListNode* orig_node = hashAccessor->second.m_listNode;
     std::unique_lock<ListMutex> lock(m_listMutex, std::try_to_lock);
     if (lock) {
-      ListNode* orig_node = hashAccessor->second.m_listNode;
       if (orig_node->isInList()) {
         delink(orig_node);
         pushFront(orig_node);
       }
       lock.unlock();
     }
+    check_if_hash_dirty(orig_node->dirty);
+    if (orig_node->dirty)
+    {
+      EvictionCallbackData<std::string, TValue> data = EvictionCallbackData<std::string, TValue>();
+      if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
+      {
+        // data.key = std::to_string(*moribund->key_value.key);
+        data.keyi = *orig_node->key_value.key;
+        data.value = std::string(reinterpret_cast<const char*>(orig_node->key_value.value.data()), orig_node->key_value.value.size());
+      }
+      else
+      {
+        data.key = orig_node->m_key.c_str();
+      }
+      data.singleton = 0;
+      data.forward_count = 0;
+      data.replica_count = 0;
+      data.dirty = orig_node->dirty;
+
+      if (!block_cache_config.baseline.one_sided_rdma_enabled)
+      {
+        data.value = hashAccessor->second.m_value;
+      }
+
+      for (const auto& callback : eviction_callbacks)
+      {
+        callback(data);
+      }
+    }
+    orig_node->dirty = dirty;
     
     delete node;
     return false;
@@ -450,14 +497,7 @@ evict() {
   if (!block_cache_config.baseline.one_sided_rdma_enabled)
   {
     data.value = hashAccessor->second.m_value;
-    if (!write_percentage)
-    {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_real_distribution<> dis(0.0, 1.0);
-      write_percentage = bool(dis(gen) < 0.0195);
-      // write_percentage = bool((std::stoi(moribund->m_key.c_str()) % 4) == 0);
-    }
+    check_if_hash_dirty(write_percentage);
   }
 
   for (const auto& callback : eviction_callbacks)
