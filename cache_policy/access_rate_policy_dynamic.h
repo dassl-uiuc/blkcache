@@ -362,7 +362,7 @@ public:
   }
 
   bool is_ready(){
-    if(total_accesses.load() > 10000000){
+    if(total_accesses.load() > 10000){
       return true;
     }
     return false;
