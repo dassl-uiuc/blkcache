@@ -87,7 +87,7 @@ public:
       return false;
     }
 
-    if(get_past_bucket(key) < bucket_id)
+    if(get_past_bucket(key) < bucket_id && bucket_id != max_uint)
     {
       // info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
       should_put = true;
@@ -95,7 +95,7 @@ public:
       if (get_past_bucket(key) == bucket_id)
       {
         // info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
-        if(stoi(key) >= key_id_cutoff){
+        if(stoi(key) >= key_id_cutoff && key_id_cutoff != max_uint){
           should_put = true;
         }
       }
@@ -482,6 +482,7 @@ private:
 
   uint64_t bucket_id;
   uint64_t key_id_cutoff;
+  uint64_t max_uint = -1;
 
   std::atomic<uint64_t> cache_dup_addition;
   std::atomic<uint64_t> cache_dup_subtraction;
