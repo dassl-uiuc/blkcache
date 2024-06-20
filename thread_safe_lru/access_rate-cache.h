@@ -443,7 +443,7 @@ evict() {
   {
     callback({moribund->m_key.c_str(), hashAccessor->second.m_value});
   }
-  if(rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*moribund->key_value.key) > 1) {
+  if(rdma_key_value_storage->get_num_cache_index_buffers_containing_key(*moribund->key_value.key) >= 2) {
     callDecrementCallback();
   }
 

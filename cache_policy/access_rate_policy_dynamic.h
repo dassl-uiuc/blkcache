@@ -335,10 +335,10 @@ public:
            << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";"
            << current_duplicates_allowed[i] << ";" << current_duplicates_set[i]
            << ";" << bucket_id_history[i] << ";" << key_id_cutoff_history[i]
-           << ";" << cache_dup_addition.load() << ";" << cache_dup_subtraction.load()
+           << ";" << dup_addition_set[i] << ";" << dup_subtraction_set[i]
            << std::endl;
-      info("access_rate: {} and local_size: {} and remote_size: {} and performance: {} and duplication_allowed: {} and current_duplicates_allowed: {} and current_duplicates_set: {} and bucket_id: {} and key_id_cutoff: {} and cache_dup_addition: {} and cache_dup_subtraction: {}", 
-            accessrate_history[i], local_size_history[i], remote_size_history[i], performance_history[i], duplication_allowed[i], current_duplicates_allowed[i], current_duplicates_set[i], bucket_id_history[i], key_id_cutoff_history[i], cache_dup_addition.load(), cache_dup_subtraction.load());
+      info("access_rate: {} and local_size: {} and remote_size: {} and performance: {} and duplication_allowed: {} and current_duplicates_allowed: {} and Total duplication in the node: {} and bucket_id: {} and key_id_cutoff: {} and total duplications added: {} and total duplications sub: {}", 
+            accessrate_history[i], local_size_history[i], remote_size_history[i], performance_history[i], duplication_allowed[i], current_duplicates_allowed[i], current_duplicates_set[i], bucket_id_history[i], key_id_cutoff_history[i], dup_addition_set[i], dup_subtraction_set[i]);
     }
     file << access_rate << std::endl;
     file.close();
@@ -417,15 +417,28 @@ public:
 
   void check_and_set_total_cache_duplication() {
     uint64_t total_cache_duplication = 0;
-    for (int i = 0; i < block_db_num_entries; i++) {
-      if(exist(std::to_string(i))){
-        int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(i);
-        if (replication_count == 2) {
+    for (auto &key : shadow_freq) {
+      if(key.second >= 1)
+      {
+        int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(std::stoi(key.first.c_str()));
+        if (replication_count >= 2) {
           total_cache_duplication++;
         }
+      } else {
+        break;
       }
     }
+    // for (int i = 0; i < block_db_num_entries; i++) {
+    //   if(exist(std::to_string(i))){
+    //     int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(i);
+    //     if (replication_count >= 2) {
+    //       total_cache_duplication++;
+    //     }
+    //   }
+    // }
     current_duplicates_set.push_back(total_cache_duplication);
+    dup_addition_set.push_back(total_cache_duplication);
+    dup_subtraction_set.push_back(cache_dup_subtraction.load());
     current_system_dup.store(total_cache_duplication);
     // current_duplicates.store(total_cache_duplication);
   }
@@ -497,6 +510,9 @@ private:
   std::vector<uint64_t> duplication_allowed;
   std::vector<uint64_t> current_duplicates_allowed;
   std::vector<uint64_t> current_duplicates_set;
+  
+  std::vector<uint64_t> dup_addition_set;
+  std::vector<uint64_t> dup_subtraction_set;
 
   std::vector<uint64_t> bucket_id_history;
   std::vector<uint64_t> key_id_cutoff_history;
