@@ -83,9 +83,9 @@ public:
       return false;
     }
 
-    // if(cache_dup_addition.load() > current_duplicates.load() && cache_dup_addition.load() > duplications_allowed.load()) {
-    //   return false;
-    // }
+    if(current_system_dup.load() > current_duplicates.load() && current_system_dup.load() > duplications_allowed.load()) {
+      return false;
+    }
 
     if(get_past_bucket(key) < bucket_id && bucket_id != max_uint)
     {
@@ -426,6 +426,7 @@ public:
       }
     }
     current_duplicates_set.push_back(total_cache_duplication);
+    current_system_dup.store(total_cache_duplication);
     // current_duplicates.store(total_cache_duplication);
   }
 
@@ -464,6 +465,7 @@ private:
   std::atomic<uint64_t> total_accesses;
   std::atomic<uint64_t> current_duplicates;
   std::atomic<uint64_t> duplications_allowed;
+  std::atomic<uint64_t> current_system_dup;
   std::map<uint64_t, uint64_t> bucket_cumulative_sum;
 
   std::atomic<uint64_t> clear_cdf;
