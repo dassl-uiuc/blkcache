@@ -83,6 +83,10 @@ public:
       return false;
     }
 
+    if(cache_dup_addition.load() > current_duplicates.load() && cache_dup_addition.load() > duplications_allowed.load()) {
+      return false;
+    }
+
     if(get_past_bucket(key) < bucket_id)
     {
       // info("Key: {} is from the past bucket: {}, but the current bucket is: {}", key, get_past_bucket(key), bucket_id);
