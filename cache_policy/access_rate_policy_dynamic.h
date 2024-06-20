@@ -84,9 +84,9 @@ public:
       return false;
     }
 
-    if(current_system_dup.load() > current_duplicates.load() && current_system_dup.load() > duplications_allowed.load()) {
-      return false;
-    }
+    // if(current_system_dup.load() > current_duplicates.load() && current_system_dup.load() > duplications_allowed.load()) {
+    //   return false;
+    // }
 
     if(get_past_bucket(key) < bucket_id && bucket_id != max_uint)
     {
@@ -208,26 +208,26 @@ public:
     bool found = false;
     clear_cdf.fetch_add(1);
     for (auto& it : cdf) {
-      found = false;
-      {
-        FrequencyAccessor acc;
-        if (key_freq.find(acc, std::get<1>(it))) {
-          acc->second = std::get<0>(it);
-          if(clear_cdf.load() % 2 == 1){
-            acc->second = 0;
-          }
-          found = true;
-        }
-      }
-      if (!found)
-      {
-        FrequencyAccessor acc;
-        key_freq.insert(acc, std::get<1>(it));
-        acc->second = std::get<0>(it);
-        if(clear_cdf.load() % 2 == 1){
-            acc->second = 0;
-        }
-      }
+      // found = false;
+      // {
+      //   FrequencyAccessor acc;
+      //   if (key_freq.find(acc, std::get<1>(it))) {
+      //     acc->second = std::get<0>(it);
+      //     if(clear_cdf.load() % 2 == 1){
+      //       acc->second = 0;
+      //     }
+      //     found = true;
+      //   }
+      // }
+      // if (!found)
+      // {
+      //   FrequencyAccessor acc;
+      //   key_freq.insert(acc, std::get<1>(it));
+      //   acc->second = std::get<0>(it);
+      //   if(clear_cdf.load() % 2 == 1){
+      //       acc->second = 0;
+      //   }
+      // }
       {
         FrequencyAccessor acc_bucket;
         if (keys_from_past.find(acc_bucket, std::get<1>(it))) {
