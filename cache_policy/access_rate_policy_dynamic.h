@@ -359,10 +359,10 @@ public:
   }
 
   void print_all_stats(){
-    // print_shadow_freq_to_a_file();
-    // print_key_freq_to_a_file();
-    // print_keys_from_past_to_a_file();
-    // print_cache_stats();
+    print_shadow_freq_to_a_file();
+    print_key_freq_to_a_file();
+    print_keys_from_past_to_a_file();
+    print_cache_stats();
     print_access_rate();
   }
 
