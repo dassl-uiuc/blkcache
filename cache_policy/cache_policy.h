@@ -226,6 +226,7 @@ public:
   virtual void clear_frequency() { panic("Unsupported"); }
   virtual void check_and_set_total_cache_duplication() { panic("Unsupported"); }
   virtual void set_keys_from_past(std::vector<std::tuple<uint64_t, std::string, uint64_t>>& cdf) { panic("Unsupported"); }
+  void update_frequency(const KeyType& key) {panic("Unsupported");}
 
   virtual void set_bucket_id(uint64_t bucket_id_) { panic("Unsupported"); }
   virtual void set_key_id_cutoff(uint64_t key_id_cutoff_) { panic("Unsupported"); }

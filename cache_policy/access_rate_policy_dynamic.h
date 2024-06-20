@@ -57,6 +57,7 @@ public:
   void put(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     String skey(key.c_str(), key.length());
+    // update_frequency(key);
     secm->insert(skey, val);
     for (const auto& callback : this->write_callbacks) {
       callback(key, val);
@@ -76,7 +77,7 @@ public:
 
   bool put_access_rate_match(const KeyType &key, const ValueType &val,
            bool owning = false) override {
-    update_frequency(key);
+    // update_frequency(key);
     bool should_put = false;
     
     if(current_duplicates.load() >= duplications_allowed.load()){
@@ -113,7 +114,7 @@ public:
     String skey(key.c_str(), key.length());
     uint64_t current_accesses = total_accesses.fetch_add(1, std::memory_order_relaxed) + 1;
     total_accesses++;
-    update_frequency(key);
+    // update_frequency(key);
     
     Cache::ConstAccessor ac;
     ValueType ret;
