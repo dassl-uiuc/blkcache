@@ -424,8 +424,6 @@ public:
         if (replication_count >= 2) {
           total_cache_duplication++;
         }
-      } else {
-        break;
       }
     }
     // for (int i = 0; i < block_db_num_entries; i++) {
