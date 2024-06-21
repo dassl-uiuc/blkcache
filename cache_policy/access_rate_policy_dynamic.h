@@ -208,26 +208,6 @@ public:
     bool found = false;
     clear_cdf.fetch_add(1);
     for (auto& it : cdf) {
-      // found = false;
-      // {
-      //   FrequencyAccessor acc;
-      //   if (key_freq.find(acc, std::get<1>(it))) {
-      //     acc->second = std::get<0>(it);
-      //     if(clear_cdf.load() % 2 == 1){
-      //       acc->second = 0;
-      //     }
-      //     found = true;
-      //   }
-      // }
-      // if (!found)
-      // {
-      //   FrequencyAccessor acc;
-      //   key_freq.insert(acc, std::get<1>(it));
-      //   acc->second = std::get<0>(it);
-      //   if(clear_cdf.load() % 2 == 1){
-      //       acc->second = 0;
-      //   }
-      // }
       {
         FrequencyAccessor acc_bucket;
         if (keys_from_past.find(acc_bucket, std::get<1>(it))) {
@@ -359,10 +339,10 @@ public:
   }
 
   void print_all_stats(){
-    print_shadow_freq_to_a_file();
-    print_key_freq_to_a_file();
-    print_keys_from_past_to_a_file();
-    print_cache_stats();
+    // print_shadow_freq_to_a_file();
+    // print_key_freq_to_a_file();
+    // print_keys_from_past_to_a_file();
+    // print_cache_stats();
     print_access_rate();
   }
 
