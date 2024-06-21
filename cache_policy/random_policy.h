@@ -47,6 +47,10 @@ public:
     }
   }
 
+  void update_frequency(const KeyType& key) {
+    return;
+  }
+
 private:
   void clean(void) {
     while (item_map.size() > this->cache_size) {

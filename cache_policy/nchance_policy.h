@@ -41,6 +41,10 @@ public:
     }
   }
 
+  void update_frequency(const KeyType& key) {
+    return;
+  }
+
   void* put_nchance(const KeyType &key, const ValueType &val,
            bool owning = false) override {
     String skey(key.c_str(), key.length());
