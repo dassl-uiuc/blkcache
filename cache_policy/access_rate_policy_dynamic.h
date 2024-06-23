@@ -186,21 +186,31 @@ public:
   }
 
   void clear_frequency() {
-    is_clearing.store(true);
     std::vector<KeyType> keys;
     shadow_freq.clear();
 
     // Iterate over the map to collect keys
-    for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
-        keys.push_back(it->first);
-        shadow_freq.push_back(std::make_pair(it->first, it->second));
+    for (auto i = 1; i <= block_db_num_entries; i++) {
+      {
+        FrequencyAccessor acc;
+        if (key_freq.find(acc, std::to_string(i))) {
+          shadow_freq.push_back(std::make_pair(std::to_string(i), acc->second));
+          keys.push_back(std::to_string(i));
+        }
+      }
     }
 
+    // is_clearing.store(true);
     // Remove each key collected
     for (auto& key : keys) {
-        key_freq.erase(key);
+      {
+        FrequencyAccessor acc;
+        if (key_freq.find(acc, key)) {
+          acc->second = 0;
+        }
+      }
     }
-    is_clearing.store(false);
+    // is_clearing.store(false);
     // return shadow_freq;
   }
   
