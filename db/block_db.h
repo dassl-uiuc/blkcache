@@ -56,7 +56,7 @@ public:
     DB::init(block_cache_config);
 
     fd = open(block_cache_config.db.block_db.filename.c_str(),
-              O_CREAT | O_RDWR | O_TRUNC |O_DIRECT, S_IRWXU);
+              O_CREAT | O_RDWR |O_DIRECT, S_IRWXU);
     if (fd == -1) {
       perror("open");
       exit(EXIT_FAILURE);
