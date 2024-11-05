@@ -78,6 +78,7 @@ struct BlockCacheConfig {
   bool ingest_block_index;
   std::string policy_type;
   uint64_t rdma_port;
+  bool craq_enabled;
   std::string db_type;
   DBConfig db;
   CacheConfig cache;
