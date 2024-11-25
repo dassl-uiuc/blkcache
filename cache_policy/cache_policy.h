@@ -15,6 +15,9 @@
 // inline static RDMACacheIndex InvalidRDMACacheIndex = RDMACacheIndex{ CACHE_INDEX_INVALID, false, 0 };
 #define InvalidRDMACacheIndex RDMACacheIndex{ CACHE_INDEX_INVALID, false, 0 }
 
+#define RDMA_DEFAULT_CRAQ_VERSION 0
+#define RDMA_USE_CRAQ
+
 // #define COMPRESS_RDMA_INDEX_KEY_VALUE
 
 struct KeyValue
@@ -37,6 +40,9 @@ struct RDMACacheIndexKeyValue
   uint64_t key_index;
 #ifndef COMPRESS_RDMA_INDEX_KEY_VALUE
   uint8_t data[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
+#endif
+#ifdef RDMA_USE_CRAQ
+  uint64_t craq_version = RDMA_DEFAULT_CRAQ_VERSION;
 #endif
 };
 
@@ -159,6 +165,20 @@ struct RDMAKeyValueStorage
 
     auto key_value = KeyValue{ key, value };
     return key_value;
+  }
+
+  void set_craq_version(uint64_t key_index, uint64_t version)
+  {
+    auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
+    auto* key = (uint64_t*)ptr;
+    auto* craq_version_offset = ptr;
+#ifdef COMPRESS_RDMA_INDEX_KEY_VALUE
+    craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
+#else
+    craq_version_offset += sizeof(uint64_t);
+#endif
+
+    *craq_version_offset = version;
   }
 
   uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
