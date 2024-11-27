@@ -43,6 +43,7 @@ struct RDMACacheIndexKeyValue
 #endif
 #ifdef RDMA_USE_CRAQ
   uint64_t craq_version = RDMA_DEFAULT_CRAQ_VERSION;
+  uint64_t craq_clean_version = RDMA_DEFAULT_CRAQ_VERSION;
 #endif
 };
 
@@ -170,12 +171,22 @@ struct RDMAKeyValueStorage
   void set_craq_version(uint64_t key_index, uint64_t version)
   {
     auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
-    auto* key = (uint64_t*)ptr;
+    auto* key = (uint64_t*)ptr + sizeof(uint64_t);
     auto* craq_version_offset = ptr;
 #ifdef COMPRESS_RDMA_INDEX_KEY_VALUE
     craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
-#else
-    craq_version_offset += sizeof(uint64_t);
+#endif
+
+    *craq_version_offset = version;
+  }
+
+  void set_clean_craq_version(uint64_t key_index, uint64_t version)
+  {
+    auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
+    auto* key = (uint64_t*)ptr + sizeof(uint64_t) + sizeof(uint64_t);
+    auto* craq_version_offset = ptr;
+#ifdef COMPRESS_RDMA_INDEX_KEY_VALUE
+    craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
 #endif
 
     *craq_version_offset = version;
