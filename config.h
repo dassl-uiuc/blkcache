@@ -178,7 +178,11 @@ inline void from_json(const json &j, Baseline &baseline) {
 
 inline void from_json(const json &j, BlockCacheConfig &bcc) {
   j.at("ingest_block_index").get_to(bcc.ingest_block_index);
-  j.at("craq_enabled").get_to(bcc.craq_enabled);
+  if (j.contains("craq_enabled")) {
+    j.at("craq_enabled").get_to(bcc.craq_enabled);
+  } else {
+    bcc.craq_enabled = false;
+  }
   j.at("policy_type").get_to(bcc.policy_type);
   j.at("rdma_port").get_to(bcc.rdma_port);
   j.at("db_type").get_to(bcc.db_type);
