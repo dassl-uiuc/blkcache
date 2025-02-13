@@ -274,6 +274,7 @@ public:
   virtual uint64_t get_block_db_num_entries() { panic("Unsupported"); }
   virtual uint64_t get_cache_size() { panic("Unsupported"); }
   virtual bool is_ready() { panic("Unsupported"); }
+  virtual uint64_t get_total_accesses() { panic("Unsupported"); }
   // virtual void set_keys_under_l(const std::vector<KeyType>& keys) { panic("Unsupported"); }
   virtual void clear_frequency() { panic("Unsupported"); }
   virtual void check_and_set_total_cache_duplication() { panic("Unsupported"); }
