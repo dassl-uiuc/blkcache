@@ -215,7 +215,7 @@ public:
         // Put dummy value in the cache
         cache->put(k, V{}, owning);
 
-        panic("value for key {} does not exist", k);
+        // panic("value for key {} does not exist", k);
       }
       return V{};
     }
