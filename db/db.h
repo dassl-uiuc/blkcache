@@ -41,6 +41,7 @@ public:
 
 public:
   uint64_t writes_blocked_count = 0;
+  uint64_t writes_blocked_size = 0;
   uint64_t writes_blocked_ns = 0;
 protected:
   BlockCacheConfig block_cache_config;

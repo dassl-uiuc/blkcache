@@ -707,6 +707,7 @@ public:
     {
       auto timer = std::chrono::high_resolution_clock::now();
       bool was_writes_blocked = false;
+      auto writes_size = 0;
 
       while (true)
       {
@@ -716,6 +717,7 @@ public:
         if (submit_write_id < waited_write_id || submit_write_id - waited_write_id > batch_max_pending_requests)
         {
           writes_blocked = true;
+          writes_size = std::max(submit_write_id - waited_write_id, writes_size);
           // info("Yielding {} - {} > {}", submit_write_id, waited_write_id, batch_max_pending_requests);
           std::this_thread::yield();
           was_writes_blocked = true;
@@ -731,6 +733,7 @@ public:
       {
         auto elapsed = std::chrono::high_resolution_clock::now() - timer;
         writes_blocked_count++;
+        writes_blocked_size = writes_size;
         writes_blocked_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
       }
     }
