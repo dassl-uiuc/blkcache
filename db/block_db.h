@@ -717,7 +717,7 @@ public:
         if (submit_write_id < waited_write_id || submit_write_id - waited_write_id > batch_max_pending_requests)
         {
           writes_blocked = true;
-          writes_size = std::max((uint64_t)(submit_write_id - waited_write_id), writes_size);
+          writes_size = std::max((uint64_t)(submit_write_id - waited_write_id)cd, writes_size);
           // info("Yielding {} - {} > {}", submit_write_id, waited_write_id, batch_max_pending_requests);
           std::this_thread::yield();
           was_writes_blocked = true;
