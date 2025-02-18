@@ -39,6 +39,9 @@ public:
   virtual std::size_t size() const = 0;
   virtual void set_batch_max_pending_requests(std::size_t v) = 0;
 
+public:
+  uint64_t writes_blocked_count = 0;
+  uint64_t writes_blocked_ns = 0;
 protected:
   BlockCacheConfig block_cache_config;
 };

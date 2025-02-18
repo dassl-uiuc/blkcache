@@ -24,8 +24,6 @@ constexpr auto IO_VEC_ALLOCATION_SIZE = 1;
 constexpr auto IO_VEC_DEFAULT_SIZE = 1;
 constexpr auto IO_VEC_WRITE_SIZE = IO_VEC_ALLOCATION_SIZE;
 
-extern uint64_t writes_blocked_ns = 0;
-
 struct AsyncRequest
 {
   std::string key;
@@ -732,6 +730,7 @@ public:
       if (was_writes_blocked)
       {
         auto elapsed = std::chrono::high_resolution_clock::now() - timer;
+        writes_blocked_count++;
         writes_blocked_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
       }
     }
