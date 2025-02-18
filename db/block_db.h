@@ -24,6 +24,8 @@ constexpr auto IO_VEC_ALLOCATION_SIZE = 1;
 constexpr auto IO_VEC_DEFAULT_SIZE = 1;
 constexpr auto IO_VEC_WRITE_SIZE = IO_VEC_ALLOCATION_SIZE;
 
+extern uint64_t writes_blocked_ns = 0;
+
 struct AsyncRequest
 {
   std::string key;
@@ -705,6 +707,9 @@ public:
     static const auto batch_write_size = block_cache_config.db.block_db.batch_write_size;
     if (batch_max_pending_requests > 0)
     {
+      auto timer = std::chrono::high_resolution_clock::now();
+      bool was_writes_blocked = false;
+
       while (true)
       {
         uint64_t submit_write_id = submitted_async_write_id.load(std::memory_order::relaxed);
@@ -715,12 +720,19 @@ public:
           writes_blocked = true;
           // info("Yielding {} - {} > {}", submit_write_id, waited_write_id, batch_max_pending_requests);
           std::this_thread::yield();
+          was_writes_blocked = true;
         }
         else
         {
           writes_blocked = false;
           break;
         }
+      }
+
+      if (was_writes_blocked)
+      {
+        auto elapsed = std::chrono::high_resolution_clock::now() - timer;
+        writes_blocked_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
       }
     }
   }
