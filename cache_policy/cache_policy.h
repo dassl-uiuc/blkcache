@@ -174,13 +174,13 @@ struct RDMAKeyValueStorage
 
   void set_craq_version(uint64_t key_index, uint64_t version)
   {
-    RDMACacheIndex* ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
+    RDMACacheIndexKeyValue* ptr = (RDMACacheIndexKeyValue*)((uint8_t*)key_value_buffer + (get_key_value_size() * key_index));
     ptr->craq_version = version;
   }
 
   void set_clean_craq_version(uint64_t key_index, uint64_t version)
   {
-    RDMACacheIndex* ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
+    RDMACacheIndexKeyValue* ptr = (RDMACacheIndexKeyValue*)((uint8_t*)key_value_buffer + (get_key_value_size() * key_index));
     ptr->craq_clean_version = version;
   }
 
