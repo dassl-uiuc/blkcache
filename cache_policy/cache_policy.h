@@ -176,7 +176,7 @@ struct RDMAKeyValueStorage
   {
     auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
     auto* key = ptr + sizeof(uint64_t);
-    auto* craq_version_offset = ptr;
+    auto* craq_version_offset = key;
 #ifndef COMPRESS_RDMA_INDEX_KEY_VALUE
     craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
 #endif
@@ -188,7 +188,7 @@ struct RDMAKeyValueStorage
   {
     auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
     auto* key = ptr + sizeof(uint64_t) + sizeof(uint64_t);
-    auto* craq_version_offset = ptr;
+    auto* craq_version_offset = key;
 #ifndef COMPRESS_RDMA_INDEX_KEY_VALUE
     craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
 #endif
