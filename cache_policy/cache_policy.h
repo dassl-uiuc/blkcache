@@ -121,7 +121,9 @@ struct RDMAKeyValueStorage
     static uint8_t static_value[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
     std::span<uint8_t> value = static_value;
 #else
-    std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
+    // std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
+    static uint8_t static_value[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
+    std::span<uint8_t> value = static_value;
 #endif
 
     auto key_value = KeyValue{ key, value };
