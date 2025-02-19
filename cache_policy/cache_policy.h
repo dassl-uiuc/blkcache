@@ -163,7 +163,9 @@ struct RDMAKeyValueStorage
     static uint8_t static_value[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
     std::span<uint8_t> value = static_value;
 #else
-    std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
+    // std::span<uint8_t> value = std::span<uint8_t>(ptr + sizeof(uint64_t), get_key_value_size() - sizeof(uint64_t));
+    static uint8_t static_value[RDMA_CACHE_INDEX_KEY_VALUE_SIZE];
+    std::span<uint8_t> value = static_value;
 #endif
 
     auto key_value = KeyValue{ key, value };
@@ -173,25 +175,25 @@ struct RDMAKeyValueStorage
   void set_craq_version(uint64_t key_index, uint64_t version)
   {
     auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
-    auto* key = (uint64_t*)ptr + sizeof(uint64_t);
+    auto* key = ptr + sizeof(uint64_t);
     auto* craq_version_offset = ptr;
 #ifndef COMPRESS_RDMA_INDEX_KEY_VALUE
     craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
 #endif
 
-    *craq_version_offset = version;
+    *(uint64_t*)craq_version_offset = version;
   }
 
   void set_clean_craq_version(uint64_t key_index, uint64_t version)
   {
     auto ptr = (uint8_t*)key_value_buffer + (get_key_value_size() * key_index);
-    auto* key = (uint64_t*)ptr + sizeof(uint64_t) + sizeof(uint64_t);
+    auto* key = ptr + sizeof(uint64_t) + sizeof(uint64_t);
     auto* craq_version_offset = ptr;
 #ifndef COMPRESS_RDMA_INDEX_KEY_VALUE
     craq_version_offset += RDMA_CACHE_INDEX_KEY_VALUE_SIZE;
 #endif
 
-    *craq_version_offset = version;
+    *(uint64_t*)craq_version_offset = version;
   }
 
   uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
