@@ -91,7 +91,7 @@ public:
       if (get_past_bucket(key) == bucket_id)
       {
         // info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
-        if(stoi(key) >= key_id_cutoff){
+        if(atoi(key.c_str()) >= key_id_cutoff){
           should_put = true;
         }
       }

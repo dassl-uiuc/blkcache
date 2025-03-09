@@ -16,7 +16,8 @@
 #define InvalidRDMACacheIndex RDMACacheIndex{ CACHE_INDEX_INVALID, false, 0 }
 
 #define RDMA_DEFAULT_CRAQ_VERSION 0
-#define RDMA_USE_CRAQ
+// #define RDMA_USE_CRAQ
+#define RDMA_CHECKSUM
 
 // #define COMPRESS_RDMA_INDEX_KEY_VALUE
 
@@ -44,6 +45,9 @@ struct RDMACacheIndexKeyValue
 #ifdef RDMA_USE_CRAQ
   uint64_t craq_version = RDMA_DEFAULT_CRAQ_VERSION;
   uint64_t craq_clean_version = RDMA_DEFAULT_CRAQ_VERSION;
+#endif
+#ifdef RDMA_CHECKSUM
+  uint32_t checksum;
 #endif
 };
 
@@ -172,6 +176,7 @@ struct RDMAKeyValueStorage
     return key_value;
   }
 
+#ifdef RDMA_USE_CRAQ
   void set_craq_version(uint64_t key_index, uint64_t version)
   {
     RDMACacheIndexKeyValue* ptr = (RDMACacheIndexKeyValue*)((uint8_t*)key_value_buffer + (get_key_value_size() * key_index));
@@ -183,6 +188,15 @@ struct RDMAKeyValueStorage
     RDMACacheIndexKeyValue* ptr = (RDMACacheIndexKeyValue*)((uint8_t*)key_value_buffer + (get_key_value_size() * key_index));
     ptr->craq_clean_version = version;
   }
+#endif
+
+#ifdef RDMA_CHECKSUM
+  void set_checksum(uint64_t key_index, uint32_t checksum)
+  {
+    RDMACacheIndexKeyValue* ptr = (RDMACacheIndexKeyValue*)((uint8_t*)key_value_buffer + (get_key_value_size() * key_index));
+    ptr->checksum = checksum;
+  }
+#endif
 
   uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
   {
