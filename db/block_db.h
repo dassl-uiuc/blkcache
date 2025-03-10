@@ -438,7 +438,10 @@ public:
                 async_read_write_request->written_id = id;
                 auto& iovecs = async_read_write_request->iovecs;
 
-                // small_write_buffer[small_write_buffer_index.fetch_add(1, std::memory_order::relaxed) % small_write_buffer.size()] = async_read_write_request;
+                if (!small_write_buffer.empty())
+                {
+                  small_write_buffer[small_write_buffer_index.fetch_add(1, std::memory_order::relaxed) % small_write_buffer.size()] = async_read_write_request;
+                }
 
                 // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
                 struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
