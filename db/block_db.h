@@ -515,7 +515,7 @@ public:
     // async_read_write_request->key = std::string{};
     // async_read_write_request->value = std::string{};
     async_read_write_request->written_id = 0;
-    async_read_write_request->read_from_cache = false;
+    async_read_write_request->read_from_cache = true;
     return async_read_write_request;
   }
 
