@@ -32,15 +32,6 @@ struct AsyncRequest
   AsyncCallback async_callback;
 };
 
-struct AsyncReadWriteRequest
-{
-  std::string key;
-  std::string value;
-  AsyncCallback callback;
-  std::vector<struct iovec> iovecs;
-  uint64_t written_id;
-};
-
 struct IOURingWorker
 {
   struct io_uring ring;
@@ -339,7 +330,7 @@ public:
             buf_offset += value_length;
 
             // Callback
-            async_read_write_request->callback(value);
+            async_read_write_request->callback(async_read_write_request);
           }
           update_maximum(waited_async_write_id, written_id);
 
@@ -392,7 +383,26 @@ public:
             const auto& async_callback = async_request.async_callback;
             if (is_read)
             {
-              this->get_async(key, std::move(async_callback));
+              // Check small write buffer
+              bool found_in_write_buffer = false;
+              for (auto i = 0; i < small_write_buffer.size(); i++)
+              {
+                AsyncReadWriteRequest* async_read_write_request = small_write_buffer[i];
+                if (async_read_write_request->key == key)
+                {
+                  async_read_write_request->read_from_cache = true;
+                  async_read_write_request->callback(async_read_write_request);
+                  found_in_write_buffer = true;
+                  small_write_buffer_hit++;
+                  break;
+                }
+              }
+
+              if (!found_in_write_buffer)
+              {
+                small_write_buffer_miss++;
+                this->get_async(key, std::move(async_callback));
+              }
             }
             else
             {
@@ -427,6 +437,8 @@ public:
                 async_read_write_request->callback = std::move(async_callback);
                 async_read_write_request->written_id = id;
                 auto& iovecs = async_read_write_request->iovecs;
+
+                small_write_buffer[small_write_buffer_index.fetch_add(1, std::memory_order::relaxed) % batch_max_pending_requests] = async_read_write_request;
 
                 // std::lock_guard<std::mutex> lock(iouring_worker->io_uring_lock);
                 struct io_uring_sqe *sqe = io_uring_get_sqe(&iouring_worker->ring);
@@ -500,6 +512,7 @@ public:
     // async_read_write_request->key = std::string{};
     // async_read_write_request->value = std::string{};
     async_read_write_request->written_id = 0;
+    async_read_write_request->read_from_cache = false;
     return async_read_write_request;
   }
 
@@ -788,6 +801,7 @@ public:
   void set_batch_max_pending_requests(std::size_t v) override
   {
     batch_max_pending_requests = v;
+    small_write_buffer.resize(batch_max_pending_requests);
   }
 
 public:
@@ -812,4 +826,6 @@ private:
   std::vector<std::shared_ptr<AsyncIOSubmitWorker>> async_io_submit_workers;
   int io_uring_write_worker_threads = 0;
   bool writes_blocked = false;
+  std::vector<AsyncReadWriteRequest*> small_write_buffer;
+  std::atomic<uint64_t> small_write_buffer_index = 0;
 };

@@ -16,8 +16,20 @@ enum class DBError {
   WriteFailed,
 };
 
+struct AsyncReadWriteRequest;
+
 using AsyncID = uint64_t;
-using AsyncCallback = std::function<void(std::string)>;
+using AsyncCallback = std::function<void(AsyncReadWriteRequest*)>;
+
+struct AsyncReadWriteRequest
+{
+  std::string key;
+  std::string value;
+  AsyncCallback callback;
+  std::vector<struct iovec> iovecs;
+  uint64_t written_id;
+  bool read_from_cache;
+};
 
 class DB {
 public:
@@ -43,6 +55,8 @@ public:
   uint64_t writes_blocked_count = 0;
   uint64_t writes_blocked_size = 0;
   uint64_t writes_blocked_ns = 0;
+  uint64_t small_write_buffer_hit = 0;
+  uint64_t small_write_buffer_miss = 0;
 protected:
   BlockCacheConfig block_cache_config;
 };
