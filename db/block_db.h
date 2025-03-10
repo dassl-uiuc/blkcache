@@ -388,7 +388,7 @@ public:
               for (auto i = 0; i < small_write_buffer.size(); i++)
               {
                 AsyncReadWriteRequest* async_read_write_request = small_write_buffer[i];
-                if (async_read_write_request->key == key)
+                if (async_read_write_request != nullptr && async_read_write_request->key == key)
                 {
                   async_read_write_request->read_from_cache = true;
                   async_read_write_request->callback(async_read_write_request);
