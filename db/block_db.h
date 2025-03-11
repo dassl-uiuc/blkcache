@@ -804,7 +804,7 @@ public:
   void set_batch_max_pending_requests(std::size_t v) override
   {
     batch_max_pending_requests = v;
-    small_write_buffer.resize(batch_max_pending_requests);
+    // small_write_buffer.resize(batch_max_pending_requests);
   }
 
 public:
