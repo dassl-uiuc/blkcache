@@ -328,7 +328,7 @@ insert(const TKey& key, const TValue& value) {
 
   if (block_cache_config.baseline.one_sided_rdma_enabled && block_cache_config.baseline.use_cache_indexing)
   {
-    KeyValue key_value = rdma_key_value_storage->allocate(std::stoi(key.c_str()));
+    KeyValue key_value = rdma_key_value_storage->allocate(std::stoull(key.c_str()));
     std::copy(std::begin(value), std::end(value), std::begin(key_value.value));
     node->key_value = key_value;
   }

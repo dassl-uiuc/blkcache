@@ -12,7 +12,7 @@
 #include <liburing.h>
 #undef BLOCK_SIZE
 
-constexpr auto BLOCK_DB_SIZE = 4096u;
+constexpr auto BLOCK_DB_SIZE = 512u;
 
 // #define IO_URING_SUBMITTING_THREAD
 

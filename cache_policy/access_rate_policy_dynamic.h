@@ -96,7 +96,7 @@ public:
       if (get_past_bucket(key) == bucket_id)
       {
         // info("Key: {} and key_id_cutoff: {}", key, key_id_cutoff);
-        if(stoi(key) >= key_id_cutoff && key_id_cutoff != max_uint){
+        if(std::stoull(key) >= key_id_cutoff && key_id_cutoff != max_uint){
           should_put = true;
         }
       }
@@ -186,32 +186,22 @@ public:
   }
 
   void clear_frequency() {
-    std::vector<KeyType> keys;
     shadow_freq.clear();
 
-    // Iterate over the map to collect keys
-    for (auto i = 1; i <= block_db_num_entries; i++) {
-      {
-        FrequencyAccessor acc;
-        if (key_freq.find(acc, std::to_string(i))) {
-          shadow_freq.push_back(std::make_pair(std::to_string(i), acc->second));
-          keys.push_back(std::to_string(i));
-        }
-      }
+    // Iterate the map directly instead of probing every possible key index.
+    // At 50M keys, the old loop (1..num_entries) was O(num_entries) even when
+    // only a small fraction of keys are actually tracked.
+    for (auto it = key_freq.begin(); it != key_freq.end(); ++it) {
+      shadow_freq.push_back(std::make_pair(it->first, it->second));
     }
 
-    // is_clearing.store(true);
-    // Remove each key collected
-    for (auto& key : keys) {
-      {
-        FrequencyAccessor acc;
-        if (key_freq.find(acc, key)) {
-          acc->second = 0;
-        }
+    // Reset all frequencies to 0 using proper accessors for thread safety
+    for (auto& kv : shadow_freq) {
+      FrequencyAccessor acc;
+      if (key_freq.find(acc, kv.first)) {
+        acc->second = 0;
       }
     }
-    // is_clearing.store(false);
-    // return shadow_freq;
   }
   
   void set_keys_from_past(std::vector<std::tuple<uint64_t, std::string, uint64_t>>& cdf) {
@@ -321,7 +311,7 @@ public:
   void print_access_rate(){
     std::ofstream file;
     file.open("access_rate.txt");
-    for (int i = 0; i < accessrate_history.size(); i++){
+    for (size_t i = 0; i < accessrate_history.size(); i++){
       file << accessrate_history[i] << ";" << local_size_history[i] << ";" << remote_size_history[i] 
            << ";" << performance_history[i] << ";" << duplication_allowed[i] << ";"
            << current_duplicates_allowed[i] << ";" << current_duplicates_set[i]
@@ -399,7 +389,7 @@ public:
   }
 
   bool check_key_duplication(const KeyType &key) {
-    int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(std::stoi(key.c_str()));
+    uint64_t replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(std::stoull(key.c_str()));
     if (replication_count > 1) {
       return true;
     }
@@ -411,7 +401,7 @@ public:
     for (auto &key : shadow_freq) {
       if(key.second >= 1)
       {
-        int replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(std::stoi(key.first.c_str()));
+        uint64_t replication_count = rdma_key_value_storage->get_num_cache_index_buffers_containing_key(std::stoull(key.first.c_str()));
         if (replication_count >= 2) {
           total_cache_duplication++;
         }
@@ -451,7 +441,7 @@ public:
   }
   
   void set_bucket_cumulative_sum(std::map<uint64_t, uint64_t>& cdf) {
-    for (int i = 0; i < cdf.size(); i++) {
+    for (uint64_t i = 0; i < (uint64_t)cdf.size(); i++) {
       bucket_cumulative_sum[i] = cdf[i];
     }
   }

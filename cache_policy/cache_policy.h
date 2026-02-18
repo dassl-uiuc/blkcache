@@ -28,7 +28,7 @@ struct RDMACacheIndex
   uint64_t forward_count;
 };
 
-constexpr auto RDMA_CACHE_INDEX_KEY_VALUE_SIZE = 100;
+constexpr auto RDMA_CACHE_INDEX_KEY_VALUE_SIZE = 8;
 
 struct RDMACacheIndexKeyValue
 {
@@ -61,7 +61,7 @@ struct RDMAKeyValueStorage
   }
 
   RDMACacheIndex* check_oldest_non_singleton() {
-        for (int i = 0; i < block_cache_config.db.block_db.num_entries; ++i) {
+        for (uint64_t i = 0; i < block_cache_config.db.block_db.num_entries; ++i) {
             RDMACacheIndex& index = cache_index_buffer[i];
             if (!index.isSingleton && index.forward_count > 0) {
                 return &index;  // Return a pointer to the non-singleton cache index
@@ -142,8 +142,8 @@ struct RDMAKeyValueStorage
 
   uint64_t get_num_cache_index_buffers_containing_key(uint64_t key_index)
   {
-    auto count = 0;
-    for (auto i = 0; i < cache_index_buffers.size(); i++)
+    uint64_t count = 0;
+    for (uint64_t i = 0; i < cache_index_buffers.size(); i++)
     {
       if (cache_index_buffers[i][key_index].key_value_ptr_offset != KEY_VALUE_PTR_INVALID)
       {
@@ -153,7 +153,7 @@ struct RDMAKeyValueStorage
     return count;
   }
 
-  RDMACacheIndex* get_cache_index_buffer_for(int i)
+  RDMACacheIndex* get_cache_index_buffer_for(uint64_t i)
   {
     return cache_index_buffers[i];
   }

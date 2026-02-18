@@ -9,8 +9,8 @@ using json = nlohmann::json;
 
 struct BlockDBConfig {
   std::string filename;
-  int num_entries;
-  int block_size;
+  uint64_t num_entries;
+  uint64_t block_size;
   bool async;
   uint64_t io_uring_ring_size;
   uint64_t io_uring_worker_threads;
@@ -21,15 +21,15 @@ struct DBConfig {
 };
 
 struct LRUConfig {
-  int cache_size;
+  uint64_t cache_size;
 };
 
 struct RandomCacheConfig {
-  int cache_size;
+  uint64_t cache_size;
 };
 
 struct SplitCacheConfig {
-  int cache_size;
+  uint64_t cache_size;
   float owning_ratio;
   float nonowning_ratio;
   std::string owning_cache_type;
@@ -37,7 +37,7 @@ struct SplitCacheConfig {
 };
 
 struct ThreadSafeLRUConfig {
-  int cache_size;
+  uint64_t cache_size;
 };
 
 struct RdmaConfig {
